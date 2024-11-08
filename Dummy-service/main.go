@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const portNum string = ":7001"
+const ip_port string = "127.0.0.1:7001"
 
 const (
 	B  = 1
@@ -157,7 +157,7 @@ func main() {
 	http.HandleFunc("/help", help)
 	http.HandleFunc("/health", health)
 
-	err := http.ListenAndServe(portNum, nil)
+	err := http.ListenAndServe(ip_port, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
