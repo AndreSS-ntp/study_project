@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
+	"log"
+	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
@@ -12,10 +13,14 @@ import (
 	"time"
 )
 
-var commands = map[string]string{
-	"/help":   "Список команд.",
-	"/health": "Вернуть состояние сервиса и данные о системе сервера.",
-}
+const portNum string = ":7001"
+
+const (
+	B  = 1
+	KB = 1024 * B
+	MB = 1024 * KB
+	GB = 1024 * MB
+)
 
 type System struct {
 	num_CPU    int
@@ -27,69 +32,31 @@ type System struct {
 	GOMAXPROCS int
 }
 
-const (
-	B  = 1
-	KB = 1024 * B
-	MB = 1024 * KB
-	GB = 1024 * MB
-)
-
-func main() {
-	listener, err := net.Listen("tcp", "127.0.0.1:7001")
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer listener.Close()
-	fmt.Println("Server is listening...")
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println(err)
-			conn.Close()
-			continue
-		}
-		go handler(conn) // запускаем горутину для обработки запроса
-	}
+var commands = map[string]string{
+	"/help":   "Список команд.",
+	"/health": "Вернуть состояние сервиса и данные о системе сервера.",
 }
 
-// обработка подключения
-func handler(conn net.Conn) {
-	defer conn.Close()
-	for {
-		// считываем полученные в запросе данные
-		input := make([]byte, (1024 * 4))
-		n, err := conn.Read(input)
-		if n == 0 || err != nil {
-			fmt.Println("Read error: ", err)
-			break
-		}
-		source := string(input[0:n])
-		switch source {
-		case "/help":
-			message := ""
-			for key, value := range commands {
-				message += key + " - " + value + "\n"
-			}
-			conn.Write([]byte(message))
-		case "/health":
-			var system System
-			system.num_CPU = runtime.NumCPU()
-			system.CPU_usage = countCPUusage()
-			system.RAM, system.RAM_used = getRAMSample()
-			system.DISC, system.DISC_used = getDISCSample("/")
-			system.GOMAXPROCS = runtime.GOMAXPROCS(0)
-			data, error := json.Marshal(system)
-			if error != nil {
-				fmt.Println("ERROR: marshling ", error)
-			}
-			conn.Write([]byte(data))
-		default:
-			conn.Write([]byte("No such command, type /help"))
-			fmt.Println(source, " - wrong command")
-		}
+func help(w http.ResponseWriter, r *http.Request) {
+	message := ""
+	for key, value := range commands {
+		message += key + " - " + value + "\n"
 	}
+	fmt.Fprintf(w, message)
+}
+
+func health(w http.ResponseWriter, r *http.Request) {
+	var system System
+	system.num_CPU = runtime.NumCPU()
+	system.CPU_usage = countCPUusage()
+	system.RAM, system.RAM_used = getRAMSample()
+	system.DISC, system.DISC_used = getDISCSample("/")
+	system.GOMAXPROCS = runtime.GOMAXPROCS(0)
+	data, error := json.Marshal(system)
+	if error != nil {
+		fmt.Fprintf(w, "ERROR: marshling ", error)
+	}
+	fmt.Fprintf(w, string(data))
 }
 
 func getRAMSample() (int64, int64) {
@@ -184,4 +151,14 @@ func getDISCSample(path string) (float64, float64) {
 	disk_USED := disk_ALL - disk_FREE
 
 	return float64(disk_ALL) / GB, float64(disk_USED) / GB
+}
+
+func main() {
+	http.HandleFunc("/help", help)
+	http.HandleFunc("/health", health)
+
+	err := http.ListenAndServe(portNum, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
