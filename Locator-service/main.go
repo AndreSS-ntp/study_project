@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -15,6 +16,8 @@ var adresses = map[int64]string{
 
 const ip_port string = "127.0.0.1:7000"
 
+var ErrNotFound = errors.New("not found")
+
 type System struct {
 	num_CPU    int
 	CPU_usage  map[string]float64
@@ -25,11 +28,16 @@ type System struct {
 	GOMAXPROCS int
 }
 
-func serviceHEALTH(w http.ResponseWriter, r *http.Request) {
+func serviceHealth(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		err = fmt.Errorf("Error while parsing ID from request: %w", err)
-		fmt.Fprintln(w, err)
+		err = fmt.Errorf("500 - iternal server error: %w", err)
+		w.WriteHeader(500)
+		_, w_err := w.Write([]byte(err.Error()))
+		if w_err != nil {
+			w_err = fmt.Errorf("cant write a response: %w", w_err)
+			fmt.Println(w_err)
+		}
 		return
 	}
 
@@ -37,31 +45,46 @@ func serviceHEALTH(w http.ResponseWriter, r *http.Request) {
 	service_health := System{}
 
 	j_err := getJson(url, &service_health)
-	if j_err != nil {
-		j_err = fmt.Errorf("Error while getting json with system info: %w", j_err)
-		fmt.Fprintln(w, j_err)
+	if errors.Is(j_err, ErrNotFound) {
+		j_err = fmt.Errorf("404 - not found")
+		w.WriteHeader(404)
+		_, w_err := w.Write([]byte(j_err.Error()))
+		if w_err != nil {
+			w_err = fmt.Errorf("cant write a response: %w", w_err)
+			fmt.Println(w_err)
+		}
 		return
 	}
 
 	data, err := json.Marshal(service_health)
 	if err != nil {
-		err = fmt.Errorf("Error while marshling json: %w", err)
-		fmt.Fprintln(w, err)
+		err = fmt.Errorf("500 - iternal server error: %w", err)
+		w.WriteHeader(500)
+		_, w_err := w.Write([]byte(err.Error()))
+		if w_err != nil {
+			w_err = fmt.Errorf("cant write a response: %w", w_err)
+			fmt.Println(w_err)
+		}
 		return
 	}
-	
-	fmt.Fprintf(w, string(data))
+
+	w.WriteHeader(200)
+	_, w_err := w.Write(data)
+	if w_err != nil {
+		w_err = fmt.Errorf("cant write a response: %w", w_err)
+		fmt.Println(w_err)
+	}
 }
 
 func getJson(url string, target interface{}) error {
 	r, err := myClient.Get(url)
 	if err != nil {
-		return fmt.Errorf("Error while getting URL from client: %w", err)
+		return fmt.Errorf("error while getting URL from client: %w", ErrNotFound)
 	}
 	defer func() {
 		def_err := r.Body.Close()
 		if def_err != nil {
-			def_err = fmt.Errorf("Error while closing response body: %w", def_err)
+			def_err = fmt.Errorf("error while closing response body: %w", def_err)
 			fmt.Println(def_err)
 		}
 	}()
@@ -69,11 +92,11 @@ func getJson(url string, target interface{}) error {
 }
 
 func main() {
-	http.HandleFunc("/serviceHEALTH/{id}", serviceHEALTH)
+	http.HandleFunc("/serviceHealth/{id}", serviceHealth)
 
 	err := http.ListenAndServe(ip_port, nil)
 	if err != nil {
-		err = fmt.Errorf("Cant ListenAndServe: %w", err)
+		err = fmt.Errorf("cant ListenAndServe: %w", err)
 		fmt.Println(err)
 	}
 }
