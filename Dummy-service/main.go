@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const ip_port string = "127.0.0.1:7001"
+const ip_port string = "0.0.0.0:7001"
 
 const (
 	B  = 1
@@ -154,6 +154,7 @@ func getDISCSample(path string) (float64, float64) {
 }
 
 func main() {
+	fmt.Println("Dummy-service is now running...")
 	http.HandleFunc("/help", help)
 	http.HandleFunc("/health", health)
 
