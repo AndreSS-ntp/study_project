@@ -11,10 +11,10 @@ import (
 
 var myClient = &http.Client{Timeout: 10 * time.Second}
 var adresses = map[int64]string{
-	1: "http://127.0.0.1:7001",
+	1: "http://172.17.0.1:7001",
 }
 
-const ip_port string = "127.0.0.1:7000"
+const ip_port string = "0.0.0.0:7000"
 
 var ErrNotFound = errors.New("not found")
 
@@ -92,6 +92,7 @@ func getJson(url string, target interface{}) error {
 }
 
 func main() {
+	fmt.Println("Locator-service is now running...")
 	http.HandleFunc("/serviceHealth/{id}", serviceHealth)
 
 	err := http.ListenAndServe(ip_port, nil)
