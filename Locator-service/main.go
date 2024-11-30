@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -13,6 +15,11 @@ var myClient = &http.Client{Timeout: 10 * time.Second}
 var adresses = map[int64]string{
 	1: "http://172.17.0.1:7001",
 }
+
+var (
+	ErrorLog  *log.Logger
+	SystemLog *log.Logger
+)
 
 const ip_port string = "0.0.0.0:7000"
 
@@ -93,11 +100,55 @@ func getJson(url string, target interface{}) error {
 
 func main() {
 	fmt.Println("Locator-service is now running...")
+
+	logFile, err := os.OpenFile("../data/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		err = fmt.Errorf("cant open logFile: %w", err)
+		fmt.Println(err)
+	}
+	defer func() {
+		err_close := logFile.Close()
+		if err_close != nil {
+			err_close = fmt.Errorf("cant close logFile: %w", err_close)
+			fmt.Println(err_close)
+		}
+	}()
+	ErrorLog = log.New(logFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	SystemLog = log.New(logFile, "", log.Ldate|log.Ltime)
+
+	go func() {
+		if err != nil {
+			return // Если LogFile не открылся
+		}
+		for {
+			for id := 1; id < len(adresses)+1; id++ {
+				url := adresses[int64(id)] + "/health"
+				service_health := System{}
+
+				j_err := getJson(url, &service_health)
+				if errors.Is(j_err, ErrNotFound) {
+					j_err = fmt.Errorf("404 - not found")
+					ErrorLog.Println(j_err)
+					continue
+				}
+
+				data, err := json.Marshal(service_health)
+				if err != nil {
+					err = fmt.Errorf("error occured: %w", err)
+					ErrorLog.Println(err)
+				}
+				SystemLog.Println(string(data))
+				fmt.Println("Log")
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
 	http.HandleFunc("/serviceHealth/{id}", serviceHealth)
 
-	err := http.ListenAndServe(ip_port, nil)
-	if err != nil {
-		err = fmt.Errorf("cant ListenAndServe: %w", err)
-		fmt.Println(err)
+	err_las := http.ListenAndServe(ip_port, nil)
+	if err_las != nil {
+		err_las = fmt.Errorf("cant ListenAndServe: %w", err_las)
+		fmt.Println(err_las)
 	}
 }

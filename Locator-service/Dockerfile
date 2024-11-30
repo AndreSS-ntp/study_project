@@ -1,5 +1,5 @@
 FROM golang:1.23.2-alpine
-WORKDIR /app
+WORKDIR /app/Locator-service
 COPY . .
 RUN go build -o main .
 EXPOSE 7000
