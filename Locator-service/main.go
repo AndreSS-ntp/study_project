@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,11 +18,6 @@ var myClient = &http.Client{Timeout: 10 * time.Second}
 var adresses = map[int64]string{
 	1: "http://172.17.0.1:7001",
 }
-
-var (
-	ErrorLog  *log.Logger
-	SystemLog *log.Logger
-)
 
 const ip_port string = "0.0.0.0:7000"
 
@@ -129,8 +123,6 @@ func main() {
 			fmt.Println(err_close)
 		}
 	}()
-	ErrorLog = log.New(logFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
-	SystemLog = log.New(logFile, "", log.Ldate|log.Ltime)
 
 	wg.Add(1)
 	go func() {
@@ -151,16 +143,22 @@ func main() {
 					j_err := getJson(url, &service_health)
 					if errors.Is(j_err, ErrNotFound) {
 						j_err = fmt.Errorf("404 - not found")
-						ErrorLog.Println(j_err)
+						fmt.Println(j_err)
 						continue
 					}
 
 					data, err := json.Marshal(service_health)
 					if err != nil {
 						err = fmt.Errorf("error occured: %w", err)
-						ErrorLog.Println(err)
+						fmt.Println(err)
 					}
-					SystemLog.Println(string(data))
+					system_log := []byte(fmt.Sprintf("%d %d.%d.%d %d:%d:%d %s\n", id, time.Now().Year(), time.Now().Month(), time.Now().Day(),
+						time.Now().Hour(), time.Now().Minute(), time.Now().Second(), data))
+					_, err_w := logFile.Write(system_log)
+					if err_w != nil {
+						err = fmt.Errorf("write error occured: %w", err)
+						fmt.Println(err)
+					}
 					fmt.Println("Log")
 				}
 				time.Sleep(5 * time.Second)
