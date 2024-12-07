@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -99,7 +103,19 @@ func getJson(url string, target interface{}) error {
 }
 
 func main() {
-	fmt.Println("Locator-service is now running...")
+	fmt.Println("Locator-service is running...")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		<-exit
+		fmt.Println("Shutting down service...")
+		cancel()
+	}()
+
+	var wg sync.WaitGroup
 
 	logFile, err := os.OpenFile("../data/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -116,39 +132,64 @@ func main() {
 	ErrorLog = log.New(logFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	SystemLog = log.New(logFile, "", log.Ldate|log.Ltime)
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err != nil {
 			return // Если LogFile не открылся
 		}
 		for {
-			for id := 1; id < len(adresses)+1; id++ {
-				url := adresses[int64(id)] + "/health"
-				service_health := System{}
+			select {
+			case <-ctx.Done():
+				fmt.Println("Logging stopped:", ctx.Err().Error())
+				return
+			default:
+				for id := 1; id < len(adresses)+1; id++ {
+					url := adresses[int64(id)] + "/health"
+					service_health := System{}
 
-				j_err := getJson(url, &service_health)
-				if errors.Is(j_err, ErrNotFound) {
-					j_err = fmt.Errorf("404 - not found")
-					ErrorLog.Println(j_err)
-					continue
-				}
+					j_err := getJson(url, &service_health)
+					if errors.Is(j_err, ErrNotFound) {
+						j_err = fmt.Errorf("404 - not found")
+						ErrorLog.Println(j_err)
+						continue
+					}
 
-				data, err := json.Marshal(service_health)
-				if err != nil {
-					err = fmt.Errorf("error occured: %w", err)
-					ErrorLog.Println(err)
+					data, err := json.Marshal(service_health)
+					if err != nil {
+						err = fmt.Errorf("error occured: %w", err)
+						ErrorLog.Println(err)
+					}
+					SystemLog.Println(string(data))
+					fmt.Println("Log")
 				}
-				SystemLog.Println(string(data))
-				fmt.Println("Log")
+				time.Sleep(5 * time.Second)
 			}
-			time.Sleep(5 * time.Second)
 		}
 	}()
 
+	server := &http.Server{Addr: ip_port, Handler: nil}
+
 	http.HandleFunc("/serviceHealth/{id}", serviceHealth)
 
-	err_las := http.ListenAndServe(ip_port, nil)
-	if err_las != nil {
-		err_las = fmt.Errorf("cant ListenAndServe: %w", err_las)
-		fmt.Println(err_las)
+	go func() {
+		err_las := server.ListenAndServe()
+		if err_las != nil {
+			err_las = fmt.Errorf("HTTP server error: %w", err_las)
+			fmt.Println(err_las)
+			cancel()
+		}
+	}()
+
+	<-ctx.Done()
+
+	err_sd := server.Shutdown(context.Background())
+	if err_sd != nil {
+		err_sd = fmt.Errorf("error shutting down server: %v", err_sd)
+		fmt.Println(err_sd)
 	}
+
+	wg.Wait()
+	fmt.Println("Locator-service stopped.")
+
 }

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
@@ -154,12 +156,39 @@ func getDISCSample(path string) (float64, float64) {
 }
 
 func main() {
-	fmt.Println("Dummy-service is now running...")
+	fmt.Println("Dummy-service is running...")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		<-exit
+		fmt.Println("Shutting down service...")
+		cancel()
+	}()
+
+	server := &http.Server{Addr: ip_port, Handler: nil}
+
 	http.HandleFunc("/help", help)
 	http.HandleFunc("/health", health)
 
-	err := http.ListenAndServe(ip_port, nil)
-	if err != nil {
-		log.Fatal(err)
+	go func() {
+		err_las := server.ListenAndServe()
+		if err_las != nil {
+			err_las = fmt.Errorf("HTTP server error: %w", err_las)
+			fmt.Println(err_las)
+			cancel()
+		}
+	}()
+
+	<-ctx.Done()
+
+	err_sd := server.Shutdown(context.Background())
+	if err_sd != nil {
+		err_sd = fmt.Errorf("error shutting down server: %v", err_sd)
+		fmt.Println(err_sd)
 	}
+
+	fmt.Println("Dummy-service stopped.")
 }
