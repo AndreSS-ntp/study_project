@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -152,8 +153,17 @@ func main() {
 						err = fmt.Errorf("error occured: %w", err)
 						fmt.Println(err)
 					}
-					system_log := []byte(fmt.Sprintf("%d %d.%d.%d %d:%d:%d %s\n", id, time.Now().Year(), time.Now().Month(), time.Now().Day(),
-						time.Now().Hour(), time.Now().Minute(), time.Now().Second(), data))
+
+					sb := strings.Builder{}
+					sb.Grow(len(data) + len(string(id)) + 22) // 22 - кол-во байт рассчитанное на дату/время + " "x2 + "\n"
+					sb.WriteString(strconv.Itoa(id))
+					sb.WriteString(" ")
+					sb.WriteString(time.Now().Format("2006-01-02 15:04:05"))
+					sb.WriteString(" ")
+					sb.WriteString(string(data))
+					sb.WriteString("\n")
+
+					system_log := []byte(sb.String())
 					_, err_w := logFile.Write(system_log)
 					if err_w != nil {
 						err = fmt.Errorf("write error occured: %w", err)
