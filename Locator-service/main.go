@@ -24,13 +24,13 @@ const ip_port string = "0.0.0.0:7000"
 var ErrNotFound = errors.New("not found")
 
 type System struct {
-	num_CPU    int
-	CPU_usage  map[string]float64
-	RAM        int64
-	RAM_used   int64
-	DISC       float64
-	DISC_used  float64
-	GOMAXPROCS int
+	num_CPU    int                `json:"num_cpu"`
+	CPU_usage  map[string]float64 `json:"cpu_usage"`
+	RAM        int64              `json:"ram"`
+	RAM_used   int64              `json:"ram_used"`
+	DISC       float64            `json:"disc"`
+	DISC_used  float64            `json:"disc_used"`
+	GOMAXPROCS int                `json:"gomaxprocs"`
 }
 
 func serviceHealth(w http.ResponseWriter, r *http.Request) {
@@ -166,9 +166,13 @@ func main() {
 		}
 	}()
 
-	server := &http.Server{Addr: ip_port, Handler: nil}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/serviceHealth/{id}", serviceHealth)
 
-	http.HandleFunc("/serviceHealth/{id}", serviceHealth)
+	server := &http.Server{
+		Addr:    ip_port,
+		Handler: mux,
+	}
 
 	go func() {
 		err_las := server.ListenAndServe()

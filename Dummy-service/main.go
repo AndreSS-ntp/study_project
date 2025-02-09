@@ -168,10 +168,14 @@ func main() {
 		cancel()
 	}()
 
-	server := &http.Server{Addr: ip_port, Handler: nil}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/help", help)
+	mux.HandleFunc("/health", health)
 
-	http.HandleFunc("/help", help)
-	http.HandleFunc("/health", health)
+	server := &http.Server{
+		Addr:    ip_port,
+		Handler: mux,
+	}
 
 	go func() {
 		err_las := server.ListenAndServe()
