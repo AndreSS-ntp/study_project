@@ -25,13 +25,13 @@ const (
 )
 
 type System struct {
-	num_CPU    int
-	CPU_usage  map[string]float64
-	RAM        int64
-	RAM_used   int64
-	DISC       float64
-	DISC_used  float64
-	GOMAXPROCS int
+	num_CPU    int                `json:"num_cpu"`
+	CPU_usage  map[string]float64 `json:"cpu_usage"`
+	RAM        int64              `json:"ram"`
+	RAM_used   int64              `json:"ram_used"`
+	DISC       float64            `json:"disc"`
+	DISC_used  float64            `json:"disc_used"`
+	GOMAXPROCS int                `json:"gomaxprocs"`
 }
 
 var commands = map[string]string{
