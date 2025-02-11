@@ -20,7 +20,7 @@ import (
 var myClient = &http.Client{Timeout: 10 * time.Second}
 var adresses = map[int64]string{
 	1: "http://172.17.0.1:7001",
-	//1: "http://127.0.0.1:7001", // для тестов без докера
+	// 1: "http://127.0.0.1:7001", // для тестов без докера
 }
 
 const ip_port string = "0.0.0.0:7000"
@@ -197,13 +197,24 @@ func main() {
 		fmt.Println("Shutting down service...")
 		cancel()
 	}()
-
 	var wg sync.WaitGroup
-
 	logFile, err := os.OpenFile("../data/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		err = fmt.Errorf("cant open logFile: %w", err)
-		fmt.Println(err)
+		if errors.Is(err, os.ErrNotExist) {
+			err_make := os.MkdirAll("../data/file-storage/system-data", os.ModePerm)
+			if err_make != nil {
+				err_make = fmt.Errorf("cant make dir with logs: %w", err_make)
+				fmt.Println(err_make)
+			}
+			logFile, err = os.OpenFile("../data/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+			if err != nil {
+				err = fmt.Errorf("cant open logFile: %w", err)
+				fmt.Println(err)
+			}
+		} else {
+			err = fmt.Errorf("cant open logFile: %w", err)
+			fmt.Println(err)
+		}
 	}
 	defer func() {
 		err_close := logFile.Close()
