@@ -20,7 +20,7 @@ import (
 var myClient = &http.Client{Timeout: 10 * time.Second}
 var adresses = map[int64]string{
 	1: "http://172.17.0.1:7001",
-	//1: "http://127.0.0.1:7001", // для тестов без докера
+	// 1: "http://127.0.0.1:7001", // для тестов без докера
 }
 
 const ip_port string = "0.0.0.0:7000"
@@ -131,7 +131,19 @@ func serviceHealth(w http.ResponseWriter, r *http.Request) {
 				}
 				sb.WriteString("ram\tram_used\tdisc\tdisc_used\tgomaxprocs\n")
 			}
-			// sb.Grow(len(splited_line[1]) + len(splited_line[2]) + len(splited_line[3])) // теряем память, тк len(splited_line[3]) это вся json строка
+
+			bytes_to_grow := len(splited_line[1]) + len(splited_line[2]) + 2 +
+				len(strconv.Itoa(sys_log.GOMAXPROCS)) + 1 +
+				len(strconv.Itoa(sys_log.num_CPU)) + 1 +
+				len(strconv.FormatInt(sys_log.RAM, 10)) + 1 +
+				len(strconv.FormatInt(sys_log.RAM_used, 10)) + 1 +
+				len(strconv.FormatFloat(sys_log.DISC, 'f', -1, 64)) + 1 +
+				len(strconv.FormatFloat(sys_log.DISC_used, 'f', -1, 64)) + 1
+			for _, v := range sys_log.CPU_usage {
+				bytes_to_grow += len(strconv.FormatFloat(v, 'f', -1, 64)) + 1
+			}
+
+			sb.Grow(bytes_to_grow)
 			sb.WriteString(splited_line[1])
 			sb.WriteString("\t")
 			sb.WriteString(splited_line[2])
@@ -197,13 +209,24 @@ func main() {
 		fmt.Println("Shutting down service...")
 		cancel()
 	}()
-
 	var wg sync.WaitGroup
-
 	logFile, err := os.OpenFile("../data/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		err = fmt.Errorf("cant open logFile: %w", err)
-		fmt.Println(err)
+		if errors.Is(err, os.ErrNotExist) {
+			err_make := os.MkdirAll("../data/file-storage/system-data", os.ModePerm)
+			if err_make != nil {
+				err_make = fmt.Errorf("cant make dir with logs: %w", err_make)
+				fmt.Println(err_make)
+			}
+			logFile, err = os.OpenFile("../data/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+			if err != nil {
+				err = fmt.Errorf("cant open logFile: %w", err)
+				fmt.Println(err)
+			}
+		} else {
+			err = fmt.Errorf("cant open logFile: %w", err)
+			fmt.Println(err)
+		}
 	}
 	defer func() {
 		err_close := logFile.Close()
