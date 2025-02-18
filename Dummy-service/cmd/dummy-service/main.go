@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	dummy_service "github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/app/dummy-service"
 	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/config"
-	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/service"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,7 +23,7 @@ func main() {
 		cancel()
 	}()
 
-	dummyApp := service.NewService()
+	dummyApp := dummy_service.NewApp()
 	mux := http.NewServeMux()
 
 	for pattern, handler := range dummyApp.Commands {
