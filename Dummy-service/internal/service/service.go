@@ -6,6 +6,10 @@ import (
 	"runtime"
 )
 
+type GetSystemer interface {
+	GetSystem() *domain.System
+}
+
 type Service struct{}
 
 func (*Service) GetSystem() *domain.System {

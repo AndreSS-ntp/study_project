@@ -14,22 +14,22 @@ var commands_info = map[string]string{
 
 type App struct {
 	Commands map[string]func(w http.ResponseWriter, r *http.Request)
+	Service  service.GetSystemer
 }
 
-func NewApp() *App {
+func NewApp(h service.GetSystemer) *App {
 	s := App{}
 	var commands = map[string]func(w http.ResponseWriter, r *http.Request){
 		"/health": s.Health,
 		"/help":   s.Help,
 	}
 	s.Commands = commands
+	s.Service = h
 	return &s
 }
 
-func (*App) Health(w http.ResponseWriter, r *http.Request) {
-	serv := service.Service{}
-	system := serv.GetSystem()
-
+func (a *App) Health(w http.ResponseWriter, r *http.Request) {
+	system := a.Service.GetSystem()
 	data, err := json.Marshal(system)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -49,7 +49,7 @@ func (*App) Health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (*App) Help(w http.ResponseWriter, r *http.Request) {
+func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 	message := ""
 	for key, value := range commands_info {
 		message += key + " - " + value + "\n"
