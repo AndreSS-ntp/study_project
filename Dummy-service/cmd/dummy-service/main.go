@@ -28,8 +28,8 @@ func main() {
 	dummyApp := dummy_service.NewApp(&serv)
 	mux := http.NewServeMux()
 
-	for pattern, handler := range dummyApp.Commands {
-		mux.HandleFunc(pattern, handler)
+	for pattern, command := range dummyApp.Commands {
+		mux.HandleFunc(pattern, command.Handler)
 	}
 
 	server := &http.Server{

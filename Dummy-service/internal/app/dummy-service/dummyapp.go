@@ -7,21 +7,21 @@ import (
 	"net/http"
 )
 
-var commands_info = map[string]string{
-	"/help":   "Список команд.",
-	"/health": "Вернуть состояние сервиса и данные о системе сервера.",
+type Command struct {
+	Description string
+	Handler     func(http.ResponseWriter, *http.Request)
 }
 
 type App struct {
-	Commands map[string]func(w http.ResponseWriter, r *http.Request)
+	Commands map[string]Command
 	Service  service.GetSystemer
 }
 
 func NewApp(h service.GetSystemer) *App {
 	s := App{}
-	var commands = map[string]func(w http.ResponseWriter, r *http.Request){
-		"/health": s.Health,
-		"/help":   s.Help,
+	var commands = map[string]Command{
+		"/help":   Command{"/help", s.Help},
+		"/health": Command{"/health", s.Health},
 	}
 	s.Commands = commands
 	s.Service = h
@@ -51,8 +51,8 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 	message := ""
-	for key, value := range commands_info {
-		message += key + " - " + value + "\n"
+	for pattern, command := range a.Commands {
+		message += pattern + " - " + command.Description + "\n"
 	}
 	w.WriteHeader(http.StatusOK)
 	_, w_err := w.Write([]byte(message))

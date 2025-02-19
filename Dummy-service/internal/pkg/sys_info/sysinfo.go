@@ -2,12 +2,18 @@ package sys_info
 
 import (
 	"fmt"
-	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/config"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+)
+
+const (
+	B  = 1
+	KB = 1024 * B
+	MB = 1024 * KB
+	GB = 1024 * MB
 )
 
 func GetRAMSample() (int64, int64) {
@@ -101,5 +107,5 @@ func GetDISCSample(path string) (float64, float64) {
 	disk_FREE := fs.Bfree * uint64(fs.Bsize)
 	disk_USED := disk_ALL - disk_FREE
 
-	return float64(disk_ALL) / config.GB, float64(disk_USED) / config.GB
+	return float64(disk_ALL) / GB, float64(disk_USED) / GB
 }
