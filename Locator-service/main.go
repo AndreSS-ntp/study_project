@@ -28,7 +28,7 @@ const ip_port string = "0.0.0.0:7000"
 var ErrNotFound = errors.New("not found")
 
 type System struct {
-	num_CPU    int                `json:"num_cpu"`
+	Num_CPU    int                `json:"num_cpu"`
 	CPU_usage  map[string]float64 `json:"cpu_usage"`
 	RAM        int64              `json:"ram"`
 	RAM_used   int64              `json:"ram_used"`
@@ -134,7 +134,7 @@ func serviceHealth(w http.ResponseWriter, r *http.Request) {
 
 			bytes_to_grow := len(splited_line[1]) + len(splited_line[2]) + 2 +
 				len(strconv.Itoa(sys_log.GOMAXPROCS)) + 1 +
-				len(strconv.Itoa(sys_log.num_CPU)) + 1 +
+				len(strconv.Itoa(sys_log.Num_CPU)) + 1 +
 				len(strconv.FormatInt(sys_log.RAM, 10)) + 1 +
 				len(strconv.FormatInt(sys_log.RAM_used, 10)) + 1 +
 				len(strconv.FormatFloat(sys_log.DISC, 'f', -1, 64)) + 1 +
