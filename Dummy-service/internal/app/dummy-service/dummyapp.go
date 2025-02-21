@@ -3,7 +3,7 @@ package dummy_service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/service"
+	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/domain"
 	"net/http"
 )
 
@@ -14,14 +14,18 @@ type Command struct {
 
 type App struct {
 	Commands map[string]Command
-	Service  service.GetSystemer
+	Service  GetSystemer
 }
 
-func NewApp(h service.GetSystemer) *App {
+type GetSystemer interface {
+	GetSystem() *domain.System
+}
+
+func NewApp(h GetSystemer) *App {
 	s := App{}
 	var commands = map[string]Command{
-		"/help":   Command{"/help", s.Help},
-		"/health": Command{"/health", s.Health},
+		"/help":   Command{"Список команд.", s.Help},
+		"/health": Command{"Вернуть состояние сервиса и данные о системе сервера.", s.Health},
 	}
 	s.Commands = commands
 	s.Service = h
