@@ -115,7 +115,7 @@ func (a *App) ServiceHealth(w http.ResponseWriter, r *http.Request) {
 			i := -1
 			var cpu_name string
 			if sb.Len() == 0 {
-				sb.WriteString("YYYY-MM-DD\thh-mm-ss\t")
+				sb.WriteString("YYYY-MM-DD\thh-mm-ss\tnum_cpu\t")
 				for range sys_log.CPU_usage {
 					if i == -1 {
 						cpu_name = "cpu"
@@ -145,6 +145,8 @@ func (a *App) ServiceHealth(w http.ResponseWriter, r *http.Request) {
 			sb.WriteString(splited_line[1])
 			sb.WriteString("\t")
 			sb.WriteString(splited_line[2])
+			sb.WriteString("\t")
+			sb.WriteString(strconv.Itoa(sys_log.Num_CPU))
 			sb.WriteString("\t")
 			i = -1
 			for range sys_log.CPU_usage {
