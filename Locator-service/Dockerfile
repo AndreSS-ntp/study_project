@@ -1,7 +1,7 @@
-FROM golang:1.23.2-alpine
+FROM golang:1.23.6-alpine
 WORKDIR /app/Locator-service
 COPY . .
-RUN go build -o main .
+RUN go build -o ./bin/main ./cmd/locator-service
 EXPOSE 7000
 
-CMD ["./main"]
+CMD ["./bin/main"]
