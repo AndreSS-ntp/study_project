@@ -7,8 +7,7 @@ import (
 	"fmt"
 	locator_service "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/app/locator-service"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
-	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
-	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/pkg/getjson"
+	http_client "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/repository/http-client"
 	"net/http"
 	"os"
 	"os/signal"
@@ -34,15 +33,16 @@ func main() {
 		cancel()
 	}()
 	var wg sync.WaitGroup
-	logFile, err := os.OpenFile("./internal/repository/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+
+	logFile, err := os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			err_make := os.MkdirAll("./internal/repository/file-storage/system-data", os.ModePerm)
+			err_make := os.MkdirAll(config.PathLogs, os.ModePerm)
 			if err_make != nil {
 				err_make = fmt.Errorf("cant make dir with logs: %w", err_make)
 				fmt.Println(err_make)
 			}
-			logFile, err = os.OpenFile("./internal/repository/file-storage/system-data/logs", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+			logFile, err = os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 			if err != nil {
 				err = fmt.Errorf("cant open logFile: %w", err)
 				fmt.Println(err)
@@ -52,6 +52,7 @@ func main() {
 			fmt.Println(err)
 		}
 	}
+
 	defer func() {
 		err_close := logFile.Close()
 		if err_close != nil {
@@ -74,9 +75,9 @@ func main() {
 			default:
 				for id := 1; id < len(config.Adresses)+1; id++ {
 					url := config.Adresses[int64(id)] + "/health"
-					service_health := domain.System{}
+					client := http_client.HttpClient{}
+					service_health, j_err := client.GetSystem(url)
 
-					j_err := getjson.GetJson(url, &service_health)
 					if errors.Is(j_err, errors.New("not found")) {
 						j_err = fmt.Errorf("404 - not found")
 						fmt.Println(j_err)
@@ -98,10 +99,10 @@ func main() {
 					sb.WriteString(string(data))
 					sb.WriteString("\n")
 
-					mu.Lock()
 					system_log := []byte(sb.String())
-					mu.Unlock()
+					mu.Lock()
 					_, err_w := logFile.Write(system_log)
+					mu.Unlock()
 					if err_w != nil {
 						err = fmt.Errorf("write error occured: %w", err)
 						fmt.Println(err)

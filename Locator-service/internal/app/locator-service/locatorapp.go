@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"io"
 	"net/http"
@@ -46,7 +47,7 @@ func (a *App) ServiceHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err_open := os.Open("./internal/repository/file-storage/system-data/logs")
+	file, err_open := os.Open(config.PathLogs)
 	if err_open != nil {
 		err_open = fmt.Errorf("500 - internal server error: %w", err_open)
 		w.WriteHeader(500)
