@@ -27,7 +27,7 @@ func (h *HttpClient) GetSystem(url string) (*domain.System, error) {
 	}()
 	s := &domain.System{}
 	err_decoder := json.NewDecoder(r.Body).Decode(s)
-	if err_decoder == nil {
+	if err_decoder != nil {
 		err_decoder = fmt.Errorf("error while decoding json: %w", err_decoder)
 		fmt.Println(err_decoder)
 	}

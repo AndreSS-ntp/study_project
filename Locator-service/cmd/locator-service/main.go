@@ -7,7 +7,9 @@ import (
 	"fmt"
 	locator_service "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/app/locator-service"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
+	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/repository/file"
 	http_client "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/repository/http-client"
+	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/service"
 	"net/http"
 	"os"
 	"os/signal"
@@ -114,7 +116,10 @@ func main() {
 		}
 	}()
 
-	locatorApp := locator_service.NewApp(mu)
+	database := file.NewFileManager(mu)
+	serv := service.NewService(database)
+	locatorApp := locator_service.NewApp(serv)
+
 	mux := http.NewServeMux()
 
 	for pattern, command := range locatorApp.Commands {
