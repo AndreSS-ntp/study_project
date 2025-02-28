@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"io"
 	"os"
@@ -13,20 +12,22 @@ import (
 	"sync"
 )
 
+var mutex = &sync.RWMutex{}
+
 type FileManager struct {
-	RWMutex *sync.RWMutex
+	LogPath string
 }
 
-func NewFileManager(mutex *sync.RWMutex) *FileManager {
-	return &FileManager{mutex}
+func NewFileManager(LogsFilePath string) *FileManager {
+	return &FileManager{LogsFilePath}
 }
 
 func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error) {
 	logs := make([]domain.System, 0)
 	timestamps := make([][]string, 0)
 
-	fm.RWMutex.RLock()
-	file, err_open := os.Open(config.PathLogs)
+	mutex.RLock()
+	file, err_open := os.Open(fm.LogPath)
 	if err_open != nil {
 		err_open = fmt.Errorf("500 - internal server error: %w", err_open)
 		return nil, nil, err_open
@@ -37,7 +38,7 @@ func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error
 			err_close = fmt.Errorf("cant close logFile: %w", err_close)
 			fmt.Println(err_close)
 		}
-		fm.RWMutex.RUnlock()
+		mutex.RUnlock()
 	}()
 
 	in := bufio.NewReader(file)

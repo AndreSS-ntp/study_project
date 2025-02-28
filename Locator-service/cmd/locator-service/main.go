@@ -116,7 +116,7 @@ func main() {
 		}
 	}()
 
-	database := file.NewFileManager(mu)
+	database := file.NewFileManager(config.PathLogs)
 	serv := service.NewService(database)
 	locatorApp := locator_service.NewApp(serv)
 
