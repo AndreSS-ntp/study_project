@@ -7,19 +7,19 @@ import (
 )
 
 type Service struct {
-	DataBase Database
+	Repository Repository
 }
 
-type Database interface {
+type Repository interface {
 	GetLogsById(id int64) ([]domain.System, [][]string, error)
 }
 
-func NewService(dataBase Database) *Service {
-	return &Service{dataBase}
+func NewService(repository Repository) *Service {
+	return &Service{repository}
 }
 
 func (s *Service) GetCSV(id int64) ([]byte, error) {
-	logs, timestamps, err := s.DataBase.GetLogsById(id)
+	logs, timestamps, err := s.Repository.GetLogsById(id)
 	if err != nil {
 		return nil, err
 	}
