@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"net/http"
-	"time"
 )
 
-var myClient = &http.Client{Timeout: 10 * time.Second}
+var myClient = &http.Client{Timeout: config.HTTPClientTimeout}
 
 type HttpClient struct{}
+
+func NewHttpClient() *HttpClient {
+	return &HttpClient{}
+}
 
 func (h *HttpClient) GetSystem(url string) (*domain.System, error) {
 	r, err := myClient.Get(url)

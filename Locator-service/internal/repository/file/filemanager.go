@@ -3,7 +3,9 @@ package file
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"io"
 	"os"
@@ -12,7 +14,7 @@ import (
 	"sync"
 )
 
-var mutex = &sync.RWMutex{}
+var Mutex = &sync.RWMutex{}
 
 type FileManager struct {
 	LogPath string
@@ -22,11 +24,48 @@ func NewFileManager(LogsFilePath string) *FileManager {
 	return &FileManager{LogsFilePath}
 }
 
+func (fm *FileManager) WriteLog(log string) error {
+	Mutex.Lock()
+	logFile, err := os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			err_make := os.MkdirAll(config.PathLogs, os.ModePerm)
+			if err_make != nil {
+				err_make = fmt.Errorf("cant make dir with logs: %w", err_make)
+				return err_make
+			}
+			logFile, err = os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+			if err != nil {
+				err = fmt.Errorf("cant open logFile: %w", err)
+				return err
+			}
+		} else {
+			err = fmt.Errorf("cant open logFile: %w", err)
+			return err
+		}
+	}
+	defer func() {
+		err_close := logFile.Close()
+		if err_close != nil {
+			err_close = fmt.Errorf("cant close logFile: %w", err_close)
+			fmt.Println(err_close)
+		}
+		Mutex.Unlock()
+	}()
+
+	_, err_w := logFile.Write([]byte(log))
+	if err_w != nil {
+		err = fmt.Errorf("write error occured: %w", err)
+		return err
+	}
+	return nil
+}
+
 func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error) {
 	logs := make([]domain.System, 0)
 	timestamps := make([][]string, 0)
 
-	mutex.RLock()
+	Mutex.RLock()
 	file, err_open := os.Open(fm.LogPath)
 	if err_open != nil {
 		err_open = fmt.Errorf("500 - internal server error: %w", err_open)
@@ -38,7 +77,7 @@ func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error
 			err_close = fmt.Errorf("cant close logFile: %w", err_close)
 			fmt.Println(err_close)
 		}
-		mutex.RUnlock()
+		Mutex.RUnlock()
 	}()
 
 	in := bufio.NewReader(file)

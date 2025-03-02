@@ -4,7 +4,7 @@ services:
   locator:
     build: ./Locator-service
     volumes:
-      - ./Locator-service/internal/repository:/app/Locator-service/internal/repository
+      - ./data:/app/data
     ports:
       - 7000:7000
 

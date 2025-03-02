@@ -1,9 +1,12 @@
-package service
+package former
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Service struct {
@@ -12,10 +15,34 @@ type Service struct {
 
 type Repository interface {
 	GetLogsById(id int64) ([]domain.System, [][]string, error)
+	WriteLog(log string) error
 }
 
 func NewService(repository Repository) *Service {
 	return &Service{repository}
+}
+
+func (s *Service) GetLogFormat(sys_logs map[int]*domain.System) []string {
+	str_logs := make([]string, 0, len(sys_logs))
+	for id, log := range sys_logs {
+		data, err := json.Marshal(log)
+		if err != nil {
+			err = fmt.Errorf("error occured: %w", err)
+			fmt.Println(err)
+		}
+
+		sb := strings.Builder{}
+		sb.Grow(len(data) + len(strconv.Itoa(id)) + 22) // 22 - кол-во байт рассчитанное на дату/время + " "x2 + "\n"
+		sb.WriteString(strconv.Itoa(id))
+		sb.WriteString(" ")
+		sb.WriteString(time.Now().Format("2006-01-02 15:04:05"))
+		sb.WriteString(" ")
+		sb.WriteString(string(data))
+		sb.WriteString("\n")
+
+		str_logs = append(str_logs, sb.String())
+	}
+	return str_logs
 }
 
 func (s *Service) GetCSV(id int64) ([]byte, error) {
