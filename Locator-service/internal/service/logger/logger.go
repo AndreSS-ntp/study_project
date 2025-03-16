@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
-	http_client "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/repository/http-client"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/service/former"
 	"time"
 )
@@ -30,13 +29,12 @@ func NewLogger(adresses map[int]string, getsystemer GetSystemer, repository form
 	return &Logger{adresses, getsystemer, repository, formater}
 }
 
-func (*Logger) GetLogs() map[int]*domain.System {
+func (l *Logger) getLogs() map[int]*domain.System {
 	sys_logs := make(map[int]*domain.System, len(config.Adresses))
 	for id := 1; id < len(config.Adresses)+1; id++ {
 		url := config.Adresses[id] + "/health"
 
-		client := http_client.HttpClient{}
-		service_health, j_err := client.GetSystem(url)
+		service_health, j_err := l.GetSystemer.GetSystem(url)
 
 		if errors.Is(j_err, errors.New("not found")) {
 			j_err = fmt.Errorf("404 - not found (service_id: %d)", id)
@@ -48,14 +46,14 @@ func (*Logger) GetLogs() map[int]*domain.System {
 	return sys_logs
 }
 
-func (l *Logger) Run(ctx *context.Context) {
+func (l *Logger) Run(ctx context.Context) {
 	for {
 		select {
-		case <-(*ctx).Done():
-			fmt.Println("Logging stopped:", (*ctx).Err().Error())
+		case <-ctx.Done():
+			fmt.Println("Logging stopped:", ctx.Err().Error())
 			return
 		default:
-			sys_logs := l.GetLogs()
+			sys_logs := l.getLogs()
 			str_logs := l.Formater.GetLogFormat(sys_logs)
 			for _, log := range str_logs {
 				err := l.Repository.WriteLog(log)

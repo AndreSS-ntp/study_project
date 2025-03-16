@@ -14,35 +14,40 @@ import (
 	"sync"
 )
 
-var Mutex = &sync.RWMutex{}
+var mutex = &sync.RWMutex{}
 
 type FileManager struct {
-	LogPath string
+	logPath string
 }
 
 func NewFileManager(LogsFilePath string) *FileManager {
 	return &FileManager{LogsFilePath}
 }
 
-func (fm *FileManager) WriteLog(log string) error {
-	Mutex.Lock()
+func (fm *FileManager) createLogFile(path string) (*os.File, error) {
+	err_make := os.MkdirAll(config.PathLogs, os.ModePerm)
+	if err_make != nil {
+		err_make = fmt.Errorf("cant make dir with logs: %w", err_make)
+		return nil, err_make
+	}
 	logFile, err := os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			err_make := os.MkdirAll(config.PathLogs, os.ModePerm)
-			if err_make != nil {
-				err_make = fmt.Errorf("cant make dir with logs: %w", err_make)
-				return err_make
-			}
-			logFile, err = os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-			if err != nil {
-				err = fmt.Errorf("cant open logFile: %w", err)
-				return err
-			}
-		} else {
-			err = fmt.Errorf("cant open logFile: %w", err)
-			return err
-		}
+		err = fmt.Errorf("cant open logFile: %w", err)
+		return nil, err
+	}
+	return logFile, nil
+}
+
+func (fm *FileManager) WriteLog(log string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	logFile, err := os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if errors.Is(err, os.ErrNotExist) {
+		logFile, err = fm.createLogFile(log)
+	}
+	if err != nil {
+		err = fmt.Errorf("cant open logFile: %w", err)
+		return err
 	}
 	defer func() {
 		err_close := logFile.Close()
@@ -50,7 +55,6 @@ func (fm *FileManager) WriteLog(log string) error {
 			err_close = fmt.Errorf("cant close logFile: %w", err_close)
 			fmt.Println(err_close)
 		}
-		Mutex.Unlock()
 	}()
 
 	_, err_w := logFile.Write([]byte(log))
@@ -65,8 +69,10 @@ func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error
 	logs := make([]domain.System, 0)
 	timestamps := make([][]string, 0)
 
-	Mutex.RLock()
-	file, err_open := os.Open(fm.LogPath)
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	file, err_open := os.Open(fm.logPath)
 	if err_open != nil {
 		err_open = fmt.Errorf("500 - internal server error: %w", err_open)
 		return nil, nil, err_open
@@ -77,7 +83,6 @@ func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error
 			err_close = fmt.Errorf("cant close logFile: %w", err_close)
 			fmt.Println(err_close)
 		}
-		Mutex.RUnlock()
 	}()
 
 	in := bufio.NewReader(file)

@@ -4,21 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"net/http"
+	"time"
 )
 
-var myClient = &http.Client{Timeout: config.HTTPClientTimeout}
+type HttpClient struct {
+	myClient *http.Client
+}
 
-type HttpClient struct{}
-
-func NewHttpClient() *HttpClient {
-	return &HttpClient{}
+func NewHttpClient(timeout time.Duration) *HttpClient {
+	return &HttpClient{&http.Client{Timeout: timeout}}
 }
 
 func (h *HttpClient) GetSystem(url string) (*domain.System, error) {
-	r, err := myClient.Get(url)
+	r, err := h.myClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("error while getting URL from client: %w", errors.New("not found"))
 	}

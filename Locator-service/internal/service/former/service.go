@@ -53,32 +53,25 @@ func (s *Service) GetCSV(id int64) ([]byte, error) {
 	sb := strings.Builder{}
 	var i = -1
 	var cpu_name string
-	for j, sys_log := range logs {
-		if sb.Len() == 0 {
-			sb.WriteString("YYYY-MM-DD\thh-mm-ss\tnum_cpu\t")
-			for range sys_log.CPU_usage {
-				if i == -1 {
-					cpu_name = "cpu"
-					i++
-				} else {
-					cpu_name = "cpu" + strconv.Itoa(i)
-					i++
-				}
-				sb.WriteString(cpu_name)
-				sb.WriteString("\t")
+
+	if len(logs) > 0 {
+		sb.WriteString("YYYY-MM-DD\thh-mm-ss\tnum_cpu\t")
+		for range logs[0].CPU_usage {
+			if i == -1 {
+				cpu_name = "cpu"
+				i++
+			} else {
+				cpu_name = "cpu" + strconv.Itoa(i)
+				i++
 			}
-			sb.WriteString("ram\tram_used\tdisc\tdisc_used\tgomaxprocs\n")
+			sb.WriteString(cpu_name)
+			sb.WriteString("\t")
 		}
-		bytes_to_grow := len(timestamps[j][0]) + len(timestamps[j][1]) + 2 +
-			len(strconv.Itoa(sys_log.GOMAXPROCS)) + 1 +
-			len(strconv.Itoa(sys_log.Num_CPU)) + 1 +
-			len(strconv.FormatInt(sys_log.RAM, 10)) + 1 +
-			len(strconv.FormatInt(sys_log.RAM_used, 10)) + 1 +
-			len(strconv.FormatFloat(sys_log.DISC, 'f', -1, 64)) + 1 +
-			len(strconv.FormatFloat(sys_log.DISC_used, 'f', -1, 64)) + 1
-		for _, v := range sys_log.CPU_usage {
-			bytes_to_grow += len(strconv.FormatFloat(v, 'f', -1, 64)) + 1
-		}
+		sb.WriteString("ram\tram_used\tdisc\tdisc_used\tgomaxprocs\n")
+	}
+
+	for j, sys_log := range logs {
+		bytes_to_grow := len(timestamps[j][0]) + len(timestamps[j][1]) + 60 + len(sys_log.CPU_usage)*16
 
 		sb.Grow(bytes_to_grow)
 		sb.WriteString(timestamps[j][0])
