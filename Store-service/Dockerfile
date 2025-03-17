@@ -1,7 +1,7 @@
 FROM golang:1.23.6-alpine
-WORKDIR /app/Dummy-service
+WORKDIR /app/Store-service
 COPY . .
 RUN go build -o ./bin/main ./cmd/store-service
-EXPOSE 7001
+EXPOSE 7002
 
 CMD ["./bin/main"]

@@ -12,3 +12,8 @@ services:
     build: ./Dummy-service
     ports:
       - 7001:7001
+
+  store:
+    build: ./Store-service
+    ports:
+      - 7002:7002
