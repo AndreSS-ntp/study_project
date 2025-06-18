@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
 	store_service "github.com/unwisecode/over-the-horison-andress/Store-service/internal/app/store-service"
 	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/service"
@@ -13,10 +14,31 @@ import (
 )
 
 func main() {
-	fmt.Println("Dummy-service is running...")
+	fmt.Println("Store-service is running...")
 	ctx, cancel := context.WithCancel(context.Background())
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	//time.Sleep(10 * time.Second)
+	dbpool, err := pgxpool.New(ctx, os.Getenv("DB_URL"))
+	if err != nil {
+		err = fmt.Errorf("Unable to create connection pool: %v\n", err)
+		fmt.Println(err)
+		cancel()
+	}
+	defer dbpool.Close()
+
+	// test case
+	var greeting string
+	err = dbpool.QueryRow(ctx, "select 'Hello, world!'").Scan(&greeting)
+	if err != nil {
+		err = fmt.Errorf("QueryRow failed: %v\n", err)
+		fmt.Println(err)
+		cancel()
+	}
+
+	fmt.Println(greeting)
+	//
 
 	go func() {
 		<-exit
