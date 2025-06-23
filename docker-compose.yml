@@ -12,3 +12,30 @@ services:
     build: ./Dummy-service
     ports:
       - 7001:7001
+
+  store:
+    build: ./Store-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - 7002:7002
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    env_file: .env
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - ./data/postgres_data:/app/data/postgres_data
+    ports:
+      - "5430:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
