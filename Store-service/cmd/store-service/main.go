@@ -19,7 +19,6 @@ func main() {
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
-	//time.Sleep(10 * time.Second)
 	dbpool, err := pgxpool.New(ctx, os.Getenv("DB_URL"))
 	if err != nil {
 		err = fmt.Errorf("Unable to create connection pool: %v\n", err)
