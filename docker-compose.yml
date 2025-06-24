@@ -16,13 +16,28 @@ services:
   store:
     build: ./Store-service
     depends_on:
-      postgres:
+      store-migrate:
+        condition: service_completed_successfully
+      store-db:
         condition: service_healthy
     env_file: .env
     ports:
       - 7002:7002
 
-  postgres:
+  store-migrate:
+    build:
+      context: ./Store-service
+      dockerfile: Dockerfile.goose
+    env_file: .env
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: ${DB_URL}
+    depends_on:
+      store-db:
+        condition: service_healthy
+    command: goose up
+
+  store-db:
     image: postgres:latest
     container_name: postgres
     env_file: .env
