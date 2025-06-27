@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	store_service "github.com/unwisecode/over-the-horison-andress/Store-service/internal/app/store-service"
 	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/config"
-	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/service"
+	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/service/system"
 	"net/http"
 	"os"
 	"os/signal"
@@ -45,7 +45,7 @@ func main() {
 		cancel()
 	}()
 
-	serv := service.Service{}
+	serv := system.Service{}
 	storeApp := store_service.NewApp(&serv)
 	mux := http.NewServeMux()
 

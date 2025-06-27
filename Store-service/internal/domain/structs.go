@@ -9,3 +9,18 @@ type System struct {
 	DISC_used  float64            `json:"disc_used"`
 	GOMAXPROCS int                `json:"gomaxprocs"`
 }
+
+type UserGroup string
+
+const (
+	AdminGroup    UserGroup = "admin"
+	CustomerGroup UserGroup = "customer"
+)
+
+type User struct {
+	ID         int       `json:"id"`
+	LastName   string    `json:"last_name"`
+	FirstName  string    `json:"first_name"`
+	MiddleName string    `json:"middle_name,omitempty"`
+	Group      UserGroup `json:"group"`
+}

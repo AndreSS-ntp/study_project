@@ -26,6 +26,11 @@ func NewApp(h GetSystemer) *App {
 	var commands = map[string]Command{
 		"/help":   Command{"Список команд.", s.Help},
 		"/health": Command{"Вернуть состояние сервиса и данные о системе сервера.", s.Health},
+		"/v1/users": Command{"POST - Создать нового пользователя, " +
+			"GET - Получить коллекцию пользователей", s.User},
+		"/v1/users/{id}": Command{"GET - Получить информацию о конкретном пользователе, " +
+			"PUT/PATCH - Полное/Частичное обновление пользователя," +
+			"DELETE - Удаление пользователя", s.UserManage},
 	}
 	s.Commands = commands
 	s.Service = h
@@ -65,3 +70,15 @@ func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(w_err)
 	}
 }
+
+// TODO: придумать более подходящий нейминг ручек store-service/переделать
+func (a *App) User(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		//
+	case http.MethodPost:
+		// create user
+	}
+}
+
+func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {}

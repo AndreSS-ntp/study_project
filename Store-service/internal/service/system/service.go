@@ -1,4 +1,4 @@
-package service
+package system
 
 import (
 	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/domain"
