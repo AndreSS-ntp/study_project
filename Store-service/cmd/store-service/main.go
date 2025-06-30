@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	store_service "github.com/unwisecode/over-the-horison-andress/Store-service/internal/app/store-service"
 	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/config"
+	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/repository"
 	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/service/system"
 	"net/http"
 	"os"
@@ -46,7 +47,8 @@ func main() {
 	}()
 
 	serv := system.Service{}
-	storeApp := store_service.NewApp(&serv)
+	repo := repository.NewDataManager(dbpool)
+	storeApp := store_service.NewApp(&serv, repo)
 	mux := http.NewServeMux()
 
 	for pattern, command := range storeApp.Commands {
