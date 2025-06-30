@@ -28,18 +28,6 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	// test case
-	var greeting string
-	err = dbpool.QueryRow(ctx, "select 'Hello, world!'").Scan(&greeting)
-	if err != nil {
-		err = fmt.Errorf("QueryRow failed: %v\n", err)
-		fmt.Println(err)
-		cancel()
-	}
-
-	fmt.Println(greeting)
-	//
-
 	go func() {
 		<-exit
 		fmt.Println("Shutting down service...")
