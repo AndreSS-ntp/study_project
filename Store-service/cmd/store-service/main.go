@@ -65,5 +65,5 @@ func main() {
 		fmt.Println(err_sd)
 	}
 
-	fmt.Println("Dummy-service stopped.")
+	fmt.Println("Store-service stopped.")
 }
