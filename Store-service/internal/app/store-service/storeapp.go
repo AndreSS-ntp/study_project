@@ -210,6 +210,7 @@ func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {
 		if w_err != nil {
 			w_err = fmt.Errorf("cant write a response: %w", w_err)
 		}
+		// TODO: store-service реализовать метод patch
 	case http.MethodPut: // обновить пользователя (целиком)
 		var user domain.User
 		err := json.NewDecoder(r.Body).Decode(&user)
