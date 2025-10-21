@@ -1,7 +1,7 @@
 go 1.23.6
 
 use (
-	./platform
+	./platform/logging
 	./Dummy-service
 	./Locator-service
 	./Store-service
