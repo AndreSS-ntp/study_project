@@ -3,8 +3,8 @@ package dummy_service
 import (
 	"context"
 	"encoding/json"
+	alogger "github.com/AndreSS-ntp/logger"
 	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/domain"
-	"github.com/unwisecode/over-the-horison-andress/platform/logging"
 	"net/http"
 )
 
@@ -41,7 +41,7 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, w_err := w.Write([]byte(err.Error()))
 		if w_err != nil {
-			logging.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 		return
 	}
@@ -49,7 +49,7 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, w_err := w.Write(data)
 	if w_err != nil {
-		logging.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 	}
 }
 
@@ -62,6 +62,6 @@ func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, w_err := w.Write([]byte(message))
 	if w_err != nil {
-		logging.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 	}
 }

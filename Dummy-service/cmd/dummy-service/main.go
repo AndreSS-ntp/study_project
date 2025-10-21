@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	alogger "github.com/AndreSS-ntp/logger"
 	dummy_service "github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/app/dummy-service"
 	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/service"
-	"github.com/unwisecode/over-the-horison-andress/platform/logging"
 	"net"
 	"net/http"
 	"os"
@@ -14,8 +14,8 @@ import (
 )
 
 func main() {
-	logger := logging.NewLogger()
-	baseCtx := logging.WithLogger(context.Background(), logger)
+	logger := alogger.NewLogger()
+	baseCtx := alogger.WithLogger(context.Background(), logger)
 	logger.Info(baseCtx, "Dummy-service is running...")
 	ctx, cancel := context.WithCancel(baseCtx)
 	exit := make(chan os.Signal, 1)
@@ -61,9 +61,9 @@ func main() {
 	logger.Info(ctx, "Dummy-service stopped.")
 }
 
-func withLogger(logger logging.Logger, handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+func withLogger(logger alogger.Logger, handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := logging.WithLogger(r.Context(), logger)
+		ctx := alogger.WithLogger(r.Context(), logger)
 		handler(w, r.WithContext(ctx))
 	}
 }

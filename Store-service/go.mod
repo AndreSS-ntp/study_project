@@ -1,6 +1,6 @@
 module github.com/unwisecode/over-the-horison-andress/Store-service
 
-go 1.23.6
+go 1.24.9
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
