@@ -2,9 +2,11 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	alogger "github.com/AndreSS-ntp/logger"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"io"
@@ -38,7 +40,7 @@ func (fm *FileManager) createLogFile(path string) (*os.File, error) {
 	return logFile, nil
 }
 
-func (fm *FileManager) WriteLog(log string) error {
+func (fm *FileManager) WriteLog(ctx context.Context, log string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	logFile, err := os.OpenFile(config.PathLogs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -52,8 +54,7 @@ func (fm *FileManager) WriteLog(log string) error {
 	defer func() {
 		err_close := logFile.Close()
 		if err_close != nil {
-			err_close = fmt.Errorf("cant close logFile: %w", err_close)
-			fmt.Println(err_close)
+			alogger.FromContext(ctx).Error(ctx, "cant close logFile: "+err_close.Error())
 		}
 	}()
 
@@ -65,7 +66,7 @@ func (fm *FileManager) WriteLog(log string) error {
 	return nil
 }
 
-func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error) {
+func (fm *FileManager) GetLogsById(ctx context.Context, id int64) ([]domain.System, [][]string, error) {
 	logs := make([]domain.System, 0)
 	timestamps := make([][]string, 0)
 
@@ -80,8 +81,7 @@ func (fm *FileManager) GetLogsById(id int64) ([]domain.System, [][]string, error
 	defer func() {
 		err_close := file.Close()
 		if err_close != nil {
-			err_close = fmt.Errorf("cant close logFile: %w", err_close)
-			fmt.Println(err_close)
+			alogger.FromContext(ctx).Error(ctx, "cant close logFile: "+err_close.Error())
 		}
 	}()
 
