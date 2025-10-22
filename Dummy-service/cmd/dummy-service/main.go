@@ -32,9 +32,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	for pattern, command := range dummyApp.Commands {
-		mux.HandleFunc(pattern, withLogger(logger, command.Handler))
+		mux.HandleFunc(pattern, alogger.HandlerWithLogger(logger, command.Handler))
 	}
-
 	server := &http.Server{
 		Addr:    config.IP_port,
 		Handler: mux,
@@ -59,11 +58,4 @@ func main() {
 	}
 
 	logger.Info(ctx, "Dummy-service stopped.")
-}
-
-func withLogger(logger alogger.Logger, handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := alogger.WithLogger(r.Context(), logger)
-		handler(w, r.WithContext(ctx))
-	}
 }
