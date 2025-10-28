@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	alogger "github.com/AndreSS-ntp/logger"
 	"github.com/unwisecode/over-the-horison-andress/Store-service/internal/domain"
 	"net/http"
 	"strconv"
@@ -21,7 +22,7 @@ type App struct {
 }
 
 type GetSystemer interface {
-	GetSystem() *domain.System
+	GetSystem(ctx context.Context) *domain.System
 }
 
 type Repository interface {
@@ -50,14 +51,14 @@ func NewApp(h GetSystemer, r Repository) *App {
 }
 
 func (a *App) Health(w http.ResponseWriter, r *http.Request) {
-	system := a.Service.GetSystem()
+	ctx := r.Context()
+	system := a.Service.GetSystem(ctx)
 	data, err := json.Marshal(system)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, w_err := w.Write([]byte(err.Error()))
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
-			fmt.Println(w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 		return
 	}
@@ -65,12 +66,12 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, w_err := w.Write(data)
 	if w_err != nil {
-		w_err = fmt.Errorf("cant write a response: %w", w_err)
-		fmt.Println(w_err)
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 	}
 }
 
 func (a *App) Help(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	message := ""
 	for pattern, command := range a.Commands {
 		message += pattern + " - " + command.Description + "\n"
@@ -78,13 +79,13 @@ func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, w_err := w.Write([]byte(message))
 	if w_err != nil {
-		w_err = fmt.Errorf("cant write a response: %w", w_err)
-		fmt.Println(w_err)
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 	}
 }
 
 // TODO: придумать более подходящий нейминг хендлеров store-service/переделать
 func (a *App) User(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	switch r.Method {
 	case http.MethodGet: // list
 		users, err := a.Repository.ListUsers(r.Context())
@@ -93,8 +94,7 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
-				fmt.Println(w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -105,7 +105,7 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -113,8 +113,7 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, w_err := w.Write(data)
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
-			fmt.Println(w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 	case http.MethodPost: // create user
 		var user domain.User
@@ -124,7 +123,7 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -135,7 +134,7 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -146,7 +145,7 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -155,41 +154,40 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
 		_, w_err := w.Write(data)
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
-			fmt.Println(w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 	default:
 		err := fmt.Errorf("405 - method not allowed")
 		w.WriteHeader(405)
 		_, w_err := w.Write([]byte(err.Error()))
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 	}
 }
 
 func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		err = fmt.Errorf("400 - bad request, invalid user id: %w", err)
 		w.WriteHeader(400)
 		_, w_err := w.Write([]byte(err.Error()))
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
-			fmt.Println(w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet: // выдать пользователя под индексом id
-		user, err := a.Repository.GetUserById(r.Context(), id)
+		user, err := a.Repository.GetUserById(ctx, id)
 		if err != nil {
 			err = fmt.Errorf("404 - user not found: %w", err)
 			w.WriteHeader(404)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -200,7 +198,7 @@ func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -208,7 +206,7 @@ func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		_, w_err := w.Write(data)
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 		// TODO: store-service реализовать метод patch
 	case http.MethodPut: // обновить пользователя (целиком)
@@ -219,31 +217,31 @@ func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
 		user.ID = id
 
-		err = a.Repository.UpdateUser(r.Context(), &user)
+		err = a.Repository.UpdateUser(ctx, &user)
 		if err != nil {
 			err = fmt.Errorf("500 - internal server error: %w", err)
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
 		w.WriteHeader(204)
 	case http.MethodDelete: // удалить пользователя
-		err := a.Repository.DeleteUser(r.Context(), id)
+		err := a.Repository.DeleteUser(ctx, id)
 		if err != nil {
 			err = fmt.Errorf("500 - internal server error: %w", err)
 			w.WriteHeader(500)
 			_, w_err := w.Write([]byte(err.Error()))
 			if w_err != nil {
-				w_err = fmt.Errorf("cant write a response: %w", w_err)
+				alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 			}
 			return
 		}
@@ -253,7 +251,7 @@ func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(405)
 		_, w_err := w.Write([]byte(err.Error()))
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 	}
 }
