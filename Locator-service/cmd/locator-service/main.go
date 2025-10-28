@@ -9,6 +9,7 @@ import (
 	http_client "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/repository/http-client"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/service/former"
 	logging "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/service/logger"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -53,6 +54,9 @@ func main() {
 	server := &http.Server{
 		Addr:    config.IP_port,
 		Handler: mux,
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
 	}
 
 	go func() {
