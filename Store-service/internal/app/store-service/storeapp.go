@@ -36,13 +36,13 @@ type Repository interface {
 func NewApp(h GetSystemer, r Repository) *App {
 	s := App{}
 	var commands = map[string]Command{
-		"/help":   Command{"Список команд.", s.Help},
-		"/health": Command{"Вернуть состояние сервиса и данные о системе сервера.", s.Health},
-		"/v1/users": Command{"POST - Создать нового пользователя, " +
-			"GET - Получить коллекцию пользователей", s.User},
-		"/v1/users/{id}": Command{"GET - Получить информацию о конкретном пользователе, " +
+		"/help":     Command{"Список команд.", s.Help},
+		"/health":   Command{"Вернуть состояние сервиса и данные о системе сервера.", s.Health},
+		"/v1/users": Command{"GET - Получить коллекцию пользователей", s.GetUsers},
+		"/v1/user":  Command{"POST - Создать нового пользователя", s.CreateUser},
+		"/v1/user/{id}": Command{"GET - Получить информацию о конкретном пользователе, " +
 			"PUT/PATCH - Полное/Частичное обновление пользователя," +
-			"DELETE - Удаление пользователя", s.UserManage},
+			"DELETE - Удаление пользователя", s.ManageUser},
 	}
 	s.Commands = commands
 	s.Service = h
@@ -83,8 +83,7 @@ func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TODO: придумать более подходящий нейминг хендлеров store-service/переделать
-func (a *App) User(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	switch r.Method {
 	case http.MethodGet: // list
@@ -115,6 +114,19 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 		if w_err != nil {
 			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
+	default:
+		err := fmt.Errorf("405 - method not allowed")
+		w.WriteHeader(405)
+		_, w_err := w.Write([]byte(err.Error()))
+		if w_err != nil {
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
+		}
+	}
+}
+
+func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	switch r.Method {
 	case http.MethodPost: // create user
 		var user domain.User
 		err := json.NewDecoder(r.Body).Decode(&user)
@@ -166,7 +178,7 @@ func (a *App) User(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) UserManage(w http.ResponseWriter, r *http.Request) {
+func (a *App) ManageUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
