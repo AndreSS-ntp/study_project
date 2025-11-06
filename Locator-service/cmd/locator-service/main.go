@@ -36,7 +36,7 @@ func main() {
 	repository := file.NewFileManager(config.PathLogs)
 	form := former.NewService(repository)
 	client := http_client.NewHttpClient(config.HTTPClientTimeout)
-	logg := logging.NewLogger(config.Adresses, client, repository, form)
+	logg := logging.NewSysLogger(config.Adresses, client, repository, form)
 	locatorApp := locator_service.NewApp(form)
 
 	wg.Add(1)

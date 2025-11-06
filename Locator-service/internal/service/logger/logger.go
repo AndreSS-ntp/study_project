@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type Logger struct {
+type SysLogger struct {
 	Adresses    map[int]string
 	GetSystemer GetSystemer
 	Repository  former.Repository
@@ -26,11 +26,11 @@ type Formater interface {
 	GetLogFormat(ctx context.Context, sys_logs map[int]*domain.System) []string
 }
 
-func NewLogger(adresses map[int]string, getsystemer GetSystemer, repository former.Repository, formater Formater) *Logger {
-	return &Logger{adresses, getsystemer, repository, formater}
+func NewSysLogger(adresses map[int]string, getsystemer GetSystemer, repository former.Repository, formater Formater) *SysLogger {
+	return &SysLogger{adresses, getsystemer, repository, formater}
 }
 
-func (l *Logger) getLogs(ctx context.Context) map[int]*domain.System {
+func (l *SysLogger) getSysLogs(ctx context.Context) map[int]*domain.System {
 	sys_logs := make(map[int]*domain.System, len(config.Adresses))
 	for id := 1; id < len(config.Adresses)+1; id++ {
 		url := config.Adresses[id] + "/health"
@@ -46,14 +46,14 @@ func (l *Logger) getLogs(ctx context.Context) map[int]*domain.System {
 	return sys_logs
 }
 
-func (l *Logger) Run(ctx context.Context) {
+func (l *SysLogger) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			alogger.FromContext(ctx).Warn(ctx, "Logging stopped: "+ctx.Err().Error())
 			return
 		default:
-			sys_logs := l.getLogs(ctx)
+			sys_logs := l.getSysLogs(ctx)
 			str_logs := l.Formater.GetLogFormat(ctx, sys_logs)
 			for _, log := range str_logs {
 				err := l.Repository.WriteLog(ctx, log)
