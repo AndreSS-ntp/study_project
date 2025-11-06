@@ -1,8 +1,9 @@
 module github.com/unwisecode/over-the-horison-andress/Store-service
 
-go 1.23.6
+go 1.24.9
 
 require (
+	github.com/AndreSS-ntp/logger v0.2.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.5 // indirect

@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
+	alogger "github.com/AndreSS-ntp/logger"
 	locator_service "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/app/locator-service"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/config"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/repository/file"
 	http_client "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/repository/http-client"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/service/former"
-	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/service/logger"
+	logging "github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/service/logger"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,15 +18,17 @@ import (
 )
 
 func main() {
-	fmt.Println("Locator-service is running...")
+	logger := alogger.NewLogger()
+	baseCtx := alogger.WithLogger(context.Background(), logger)
+	logger.Info(baseCtx, "Locator-service is running...")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(baseCtx)
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
 		<-exit
-		fmt.Println("Shutting down service...")
+		logger.Warn(ctx, "Shutting down service...")
 		cancel()
 	}()
 	var wg sync.WaitGroup
@@ -33,7 +36,7 @@ func main() {
 	repository := file.NewFileManager(config.PathLogs)
 	form := former.NewService(repository)
 	client := http_client.NewHttpClient(config.HTTPClientTimeout)
-	logg := logger.NewLogger(config.Adresses, client, repository, form)
+	logg := logging.NewSysLogger(config.Adresses, client, repository, form)
 	locatorApp := locator_service.NewApp(form)
 
 	wg.Add(1)
@@ -45,19 +48,21 @@ func main() {
 	mux := http.NewServeMux()
 
 	for pattern, command := range locatorApp.Commands {
-		mux.HandleFunc(pattern, command.Handler)
+		mux.HandleFunc(pattern, alogger.HandlerWithLogger(logger, command.Handler))
 	}
 
 	server := &http.Server{
 		Addr:    config.IP_port,
 		Handler: mux,
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
 	}
 
 	go func() {
 		err_las := server.ListenAndServe()
 		if err_las != nil {
-			err_las = fmt.Errorf("HTTP server error: %w", err_las)
-			fmt.Println(err_las)
+			logger.Error(ctx, "HTTP server error: "+err_las.Error())
 			cancel()
 		}
 	}()
@@ -66,11 +71,9 @@ func main() {
 
 	err_sd := server.Shutdown(context.Background())
 	if err_sd != nil {
-		err_sd = fmt.Errorf("error shutting down server: %v", err_sd)
-		fmt.Println(err_sd)
+		logger.Error(ctx, "error shutting down server: "+err_sd.Error())
 	}
 
 	wg.Wait()
-	fmt.Println("Locator-service stopped.")
-
+	logger.Info(ctx, "Locator-service stopped.")
 }

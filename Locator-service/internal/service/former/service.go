@@ -1,8 +1,9 @@
 package former
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	alogger "github.com/AndreSS-ntp/logger"
 	"github.com/unwisecode/over-the-horison-andress/tree/main/Locator-service/internal/domain"
 	"strconv"
 	"strings"
@@ -14,21 +15,20 @@ type Service struct {
 }
 
 type Repository interface {
-	GetLogsById(id int64) ([]domain.System, [][]string, error)
-	WriteLog(log string) error
+	GetLogsById(ctx context.Context, id int64) ([]domain.System, [][]string, error)
+	WriteLog(ctx context.Context, log string) error
 }
 
 func NewService(repository Repository) *Service {
 	return &Service{repository}
 }
 
-func (s *Service) GetLogFormat(sys_logs map[int]*domain.System) []string {
+func (s *Service) GetLogFormat(ctx context.Context, sys_logs map[int]*domain.System) []string {
 	str_logs := make([]string, 0, len(sys_logs))
 	for id, log := range sys_logs {
 		data, err := json.Marshal(log)
 		if err != nil {
-			err = fmt.Errorf("error occured: %w", err)
-			fmt.Println(err)
+			alogger.FromContext(ctx).Error(ctx, "error occured: "+err.Error())
 		}
 
 		sb := strings.Builder{}
@@ -45,8 +45,8 @@ func (s *Service) GetLogFormat(sys_logs map[int]*domain.System) []string {
 	return str_logs
 }
 
-func (s *Service) GetCSV(id int64) ([]byte, error) {
-	logs, timestamps, err := s.Repository.GetLogsById(id)
+func (s *Service) GetCSV(ctx context.Context, id int64) ([]byte, error) {
+	logs, timestamps, err := s.Repository.GetLogsById(ctx, id)
 	if err != nil {
 		return nil, err
 	}

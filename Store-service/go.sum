@@ -1,3 +1,5 @@
+github.com/AndreSS-ntp/logger v0.2.0 h1:7y1BRbdfM29IJBv8RR0CJIg6Vz74/8xToQsMXL9EOpY=
+github.com/AndreSS-ntp/logger v0.2.0/go.mod h1:S/gMsMQ7MzePLMldqLlxDGoFneUVPAiIB57o9d96Qrc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=

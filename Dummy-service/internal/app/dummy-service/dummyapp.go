@@ -1,8 +1,9 @@
 package dummy_service
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	alogger "github.com/AndreSS-ntp/logger"
 	"github.com/unwisecode/over-the-horison-andress/Dummy-service/internal/domain"
 	"net/http"
 )
@@ -18,7 +19,7 @@ type App struct {
 }
 
 type GetSystemer interface {
-	GetSystem() *domain.System
+	GetSystem(ctx context.Context) *domain.System
 }
 
 func NewApp(h GetSystemer) *App {
@@ -33,14 +34,14 @@ func NewApp(h GetSystemer) *App {
 }
 
 func (a *App) Health(w http.ResponseWriter, r *http.Request) {
-	system := a.Service.GetSystem()
+	ctx := r.Context()
+	system := a.Service.GetSystem(ctx)
 	data, err := json.Marshal(system)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, w_err := w.Write([]byte(err.Error()))
 		if w_err != nil {
-			w_err = fmt.Errorf("cant write a response: %w", w_err)
-			fmt.Println(w_err)
+			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 		}
 		return
 	}
@@ -48,12 +49,12 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, w_err := w.Write(data)
 	if w_err != nil {
-		w_err = fmt.Errorf("cant write a response: %w", w_err)
-		fmt.Println(w_err)
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 	}
 }
 
 func (a *App) Help(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	message := ""
 	for pattern, command := range a.Commands {
 		message += pattern + " - " + command.Description + "\n"
@@ -61,7 +62,6 @@ func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, w_err := w.Write([]byte(message))
 	if w_err != nil {
-		w_err = fmt.Errorf("cant write a response: %w", w_err)
-		fmt.Println(w_err)
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
 	}
 }

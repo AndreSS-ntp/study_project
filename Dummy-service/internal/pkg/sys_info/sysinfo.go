@@ -1,7 +1,8 @@
 package sys_info
 
 import (
-	"fmt"
+	"context"
+	alogger "github.com/AndreSS-ntp/logger"
 	"io/ioutil"
 	"strconv"
 	"strings"
@@ -16,11 +17,11 @@ const (
 	GB = 1024 * MB
 )
 
-func GetRAMSample() (int64, int64) {
+func GetRAMSample(ctx context.Context) (int64, int64) {
 	var MemTotal, MemAvailable int64
 	contents, err := ioutil.ReadFile("/proc/meminfo")
 	if err != nil {
-		fmt.Println(err)
+		alogger.FromContext(ctx).Error(ctx, "error in GetRAMSample: "+err.Error())
 		return 0, 0
 	}
 	lines := strings.Split(string(contents), "\n")
@@ -31,12 +32,13 @@ func GetRAMSample() (int64, int64) {
 		case "MemTotal:":
 			MemTotal, err = strconv.ParseInt(fields[1], 10, 64)
 			if err != nil {
-				fmt.Println("Error: ", fields, err)
+				// TODO: стандартизировать ошибки
+				alogger.FromContext(ctx).Warn(ctx, "error in GetRAMSample: "+err.Error())
 			}
 		case "MemAvailable:":
 			MemAvailable, err = strconv.ParseInt(fields[1], 10, 64)
 			if err != nil {
-				fmt.Println("Error: ", fields, err)
+				alogger.FromContext(ctx).Warn(ctx, "error in GetRAMSample: "+err.Error())
 			}
 		}
 	}
@@ -44,12 +46,12 @@ func GetRAMSample() (int64, int64) {
 
 }
 
-func GetCPUSample() (map[string]uint64, map[string]uint64) {
+func GetCPUSample(ctx context.Context) (map[string]uint64, map[string]uint64) {
 	contents, err := ioutil.ReadFile("/proc/stat")
 	total := make(map[string]uint64)
 	total_idle := make(map[string]uint64)
 	if err != nil {
-		fmt.Println(err)
+		alogger.FromContext(ctx).Error(ctx, "error in GetCPUSample"+err.Error())
 		return total, total_idle
 	}
 	lines := strings.Split(string(contents), "\n")
@@ -61,7 +63,7 @@ func GetCPUSample() (map[string]uint64, map[string]uint64) {
 			for i := 1; i < numFields; i++ {
 				val, err := strconv.ParseUint(fields[i], 10, 64)
 				if err != nil {
-					fmt.Println("Error: ", i, fields[i], err)
+					alogger.FromContext(ctx).Warn(ctx, "error in GetCPUSample: "+err.Error())
 				}
 				total[fields[0]] += val // tally up all the numbers to get total ticks
 				if i == 4 {             // idle is the 5th field in the cpu line
@@ -73,17 +75,17 @@ func GetCPUSample() (map[string]uint64, map[string]uint64) {
 	return total, total_idle
 }
 
-func CountCPUusage() map[string]float64 {
-	total_0, total_idle_0 := GetCPUSample()
+func CountCPUusage(ctx context.Context) map[string]float64 {
+	total_0, total_idle_0 := GetCPUSample(ctx)
 	time.Sleep(5 * time.Second)
-	total_1, total_idle_1 := GetCPUSample()
+	total_1, total_idle_1 := GetCPUSample(ctx)
 	CPU_usage := make(map[string]float64)
 
 	idleTicks := make(map[string]float64)
 	totalTicks := make(map[string]float64)
 
 	if len(total_0) == 0 || len(total_1) == 0 {
-		fmt.Println("ERROR: zero data from <getCPUsample>")
+		alogger.FromContext(ctx).Warn(ctx, "zero data from GetCPUSample")
 		return CPU_usage
 	}
 
@@ -97,10 +99,11 @@ func CountCPUusage() map[string]float64 {
 	return CPU_usage
 }
 
-func GetDISCSample(path string) (float64, float64) {
+func GetDISCSample(ctx context.Context, path string) (float64, float64) {
 	fs := syscall.Statfs_t{}
 	err := syscall.Statfs(path, &fs)
 	if err != nil {
+		alogger.FromContext(ctx).Error(ctx, "error in GetDISCSample"+err.Error())
 		return 0, 0
 	}
 	disk_ALL := fs.Blocks * uint64(fs.Bsize)

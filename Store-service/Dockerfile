@@ -1,4 +1,4 @@
-FROM golang:1.23.6-alpine
+FROM golang:1.24.9-alpine
 WORKDIR /app/Store-service
 COPY . .
 RUN go build -o ./bin/main ./cmd/store-service
