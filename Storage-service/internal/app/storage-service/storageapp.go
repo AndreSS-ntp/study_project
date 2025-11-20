@@ -29,11 +29,11 @@ type GetSystemer interface {
 }
 
 type Repository interface {
-	CreateItem(ctx context.Context, item *domain.Item) (domain.ItemToSend, error)
-	UpdateProduct(ctx context.Context, item *domain.Item) (domain.ItemToSend, error)
+	CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemToSend, error)
+	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemToSend, error)
 	GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemToSend, error)
 	DeleteItem(ctx context.Context, sku uint64) error
-	ListItems(ctx context.Context, limit, offset int) ([]domain.ItemToSend, error)
+	ListItems(ctx context.Context, limit, offset int) ([]*domain.ItemToSend, error)
 }
 
 // Объект item для десериализации из запроса
