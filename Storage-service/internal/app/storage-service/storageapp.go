@@ -44,6 +44,20 @@ type itemParse struct {
 	Quantity int    `json:"quantity"`
 }
 
+type ErrorResponse struct {
+	ErrMsg string `json:"error"`
+}
+
+func sendError(ctx context.Context, w http.ResponseWriter, msg string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	w_err := json.NewEncoder(w).Encode(ErrorResponse{msg})
+	if w_err != nil {
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
+	}
+}
+
 func NewApp(h GetSystemer, r Repository) *App {
 	s := App{}
 	var commands = map[string]Command{
@@ -98,37 +112,19 @@ func (a *App) GetItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sku, err := strconv.ParseUint(r.PathValue("sku"), 10, 64)
 	if err != nil {
-		http.Error(w, `{"error":"invalid sku"}`, 400)
-		/*err = fmt.Errorf("invalid item sku: %w", err)
-		w.WriteHeader(400)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}*/
+		sendError(ctx, w, "invalid sku", 400)
 		return
 	}
 	item, err := a.Repository.GetItemBySKU(ctx, sku)
 	if err != nil {
-		http.Error(w, `{"error":"item not found"}`, 404)
-		/*err = fmt.Errorf("item not found: %w", err)
-		w.WriteHeader(404)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}*/
+		sendError(ctx, w, "item not found", 404)
 		return
 	}
 
 	data, err := json.Marshal(item)
 
 	if err != nil {
-		http.Error(w, `{"error":"internal server error"}`, 500)
-		/*err = fmt.Errorf("internal server error: %w", err)
-		w.WriteHeader(500)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}*/
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -143,29 +139,17 @@ func (a *App) DeleteItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sku, err := strconv.ParseUint(r.PathValue("sku"), 10, 64)
 	if err != nil {
-		http.Error(w, `{"error":"invalid sku"}`, 400)
-		/*err = fmt.Errorf("invalid user sku: %w", err)
-		w.WriteHeader(400)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}*/
+		sendError(ctx, w, "invalid sku", 400)
 		return
 	}
 
 	err = a.Repository.DeleteItem(ctx, sku)
 	if err != nil {
 		if errors.Is(err, fmt.Errorf("item not found")) {
-			http.Error(w, `{"error":"item not found"}`, 404)
+			sendError(ctx, w, "item not found", 404)
 			return
 		}
-		http.Error(w, `{"error":"internal server error"}`, 500)
-		/*err = fmt.Errorf("internal server error: %w", err)
-		w.WriteHeader(500)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}*/
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 	w.WriteHeader(204)
@@ -176,23 +160,13 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 	var item itemParse
 	err := json.NewDecoder(r.Body).Decode(&item)
 	if err != nil {
-		err = fmt.Errorf("internal server error: %w", err)
-		w.WriteHeader(500)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
 	amount, err := money.ParseAmount("RUB", item.Price)
 	if err != nil {
-		err = fmt.Errorf("invalid price format: %w", err)
-		w.WriteHeader(400)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, "internal price format", 400)
 		return
 	}
 
@@ -207,22 +181,16 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			http.Error(w, `{"error":"sku already exists"}`, http.StatusConflict)
+			sendError(ctx, w, "sku already exists", 409)
 			return
 		}
-
-		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
 	data, err := json.Marshal(createdItem)
 	if err != nil {
-		err = fmt.Errorf("internal server error: %w", err)
-		w.WriteHeader(500)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
@@ -248,23 +216,13 @@ func (a *App) GetItems(w http.ResponseWriter, r *http.Request) {
 
 	items, err := a.Repository.ListItems(ctx, limit, offset)
 	if err != nil {
-		err = fmt.Errorf("internal server error: %w", err)
-		w.WriteHeader(500)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
 	data, err := json.Marshal(items)
 	if err != nil {
-		err = fmt.Errorf("500 - internal server error: %w", err)
-		w.WriteHeader(500)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
@@ -280,25 +238,20 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sku, err := strconv.ParseUint(r.PathValue("sku"), 10, 64)
 	if err != nil {
-		err = fmt.Errorf("invalid user sku: %w", err)
-		w.WriteHeader(400)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, "invalid sku", 400)
 		return
 	}
 
 	var itemToUpdate itemParse
 	err = json.NewDecoder(r.Body).Decode(&itemToUpdate)
 	if err != nil {
-		http.Error(w, `{"error":"invalid json"}`, 400)
+		sendError(ctx, w, "invalid json", 400)
 		return
 	}
 
 	amount, err := money.ParseAmount("RUB", itemToUpdate.Price)
 	if err != nil {
-		http.Error(w, `{"error":"invalid price format"}`, 400)
+		sendError(ctx, w, "invalid price format", 400)
 		return
 	}
 
@@ -312,22 +265,16 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	updated, err := a.Repository.UpdateProduct(ctx, &updatedItem)
 	if err != nil {
 		if errors.Is(err, fmt.Errorf("item not found")) {
-			http.Error(w, `{"error":"item not found"}`, http.StatusNotFound)
+			sendError(ctx, w, "item not found", 404)
 			return
 		}
-
-		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
 	data, err := json.Marshal(updated)
 	if err != nil {
-		err = fmt.Errorf("500 - internal server error: %w", err)
-		w.WriteHeader(500)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
