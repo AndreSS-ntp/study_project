@@ -160,7 +160,7 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 	var item itemParse
 	err := json.NewDecoder(r.Body).Decode(&item)
 	if err != nil {
-		sendError(ctx, w, "internal server error", 500)
+		sendError(ctx, w, "invalid json", 400)
 		return
 	}
 
