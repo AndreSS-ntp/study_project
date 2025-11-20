@@ -20,7 +20,7 @@ func NewDataManager(db *pgxpool.Pool) *DataManager {
 	return &DataManager{db}
 }
 
-func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (domain.Item, error) {
+func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (domain.ItemToSend, error) {
 	query := `
 		INSERT INTO items (sku, name, price, quantity)
 		VALUES ($1, $2, $3, $4)
@@ -37,36 +37,46 @@ func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (domain
 		item.Quantity)
 
 	var (
-		dbSKU    string
-		dbName   string
-		dbPrice  string
-		quantity int
+		dbSKU      string
+		dbName     string
+		dbPrice    string
+		dbQuantity int
 	)
 
-	err := row.Scan(&dbSKU, &dbName, &dbPrice, &quantity)
+	err := row.Scan(&dbSKU, &dbName, &dbPrice, &dbQuantity)
 	if err != nil {
-		return domain.Item{}, fmt.Errorf("scan created item: %w", err)
+		return domain.ItemToSend{}, fmt.Errorf("scan created item: %w", err)
 	}
 
 	parsedSKU, err := strconv.ParseUint(dbSKU, 10, 64)
 	if err != nil {
-		return domain.Item{}, fmt.Errorf("parse sku from db: %w", err)
+		return domain.ItemToSend{}, fmt.Errorf("parse sku from db: %w", err)
 	}
 
 	amount, err := money.ParseAmount("RUB", dbPrice)
 	if err != nil {
-		return domain.Item{}, fmt.Errorf("parse price as money: %w", err)
+		return domain.ItemToSend{}, fmt.Errorf("parse price as money: %w", err)
 	}
 
-	return domain.Item{
-		SKU:      parsedSKU,
-		Name:     dbName,
-		Price:    amount,
-		Quantity: quantity,
+	whole, fracture, ok := amount.Int64(4)
+	if !ok {
+		return domain.ItemToSend{}, fmt.Errorf("parse price as MoneySplitted: %w", err)
+	}
+	currency := amount.Curr()
+
+	return domain.ItemToSend{
+		SKU:  parsedSKU,
+		Name: dbName,
+		Price: domain.MoneySplitted{
+			Whole:    whole,
+			Fracture: fracture,
+			Currency: currency,
+		},
+		Quantity: dbQuantity,
 	}, nil
 }
 
-func (p *DataManager) UpdateProduct(ctx context.Context, item *domain.Item) (domain.Item, error) {
+func (p *DataManager) UpdateProduct(ctx context.Context, item *domain.Item) (domain.ItemToSend, error) {
 	query := `
 		UPDATE items
 		SET name = $1, price = $2, quantity = $3
@@ -78,10 +88,10 @@ func (p *DataManager) UpdateProduct(ctx context.Context, item *domain.Item) (dom
 	priceStr := item.Price.Decimal().String()
 
 	var (
-		dbSKU   string
-		dbName  string
-		dbPrice string
-		dbQty   int
+		dbSKU      string
+		dbName     string
+		dbPrice    string
+		dbQuantity int
 	)
 
 	row := p.pool.QueryRow(ctx, query,
@@ -90,34 +100,44 @@ func (p *DataManager) UpdateProduct(ctx context.Context, item *domain.Item) (dom
 		item.Quantity,
 		skuStr)
 
-	err := row.Scan(&dbSKU, &dbName, &dbPrice, &dbQty)
+	err := row.Scan(&dbSKU, &dbName, &dbPrice, &dbQuantity)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Item{}, fmt.Errorf("item not found")
+			return domain.ItemToSend{}, fmt.Errorf("item not found")
 		}
-		return domain.Item{}, fmt.Errorf("scan updated item: %w", err)
+		return domain.ItemToSend{}, fmt.Errorf("scan updated item: %w", err)
 	}
 
 	parsedSKU, err := strconv.ParseUint(dbSKU, 10, 64)
 	if err != nil {
-		return domain.Item{}, fmt.Errorf("parse sku from db: %w", err)
+		return domain.ItemToSend{}, fmt.Errorf("parse sku from db: %w", err)
 	}
 
 	amount, err := money.ParseAmount("RUB", dbPrice)
 	if err != nil {
-		return domain.Item{}, fmt.Errorf("parse price as money: %w", err)
+		return domain.ItemToSend{}, fmt.Errorf("parse price as money: %w", err)
 	}
 
-	return domain.Item{
-		SKU:      parsedSKU,
-		Name:     dbName,
-		Price:    amount,
-		Quantity: dbQty,
+	whole, fracture, ok := amount.Int64(4)
+	if !ok {
+		return domain.ItemToSend{}, fmt.Errorf("parse price as MoneySplitted: %w", err)
+	}
+	currency := amount.Curr()
+
+	return domain.ItemToSend{
+		SKU:  parsedSKU,
+		Name: dbName,
+		Price: domain.MoneySplitted{
+			Whole:    whole,
+			Fracture: fracture,
+			Currency: currency,
+		},
+		Quantity: dbQuantity,
 	}, nil
 }
 
-func (p *DataManager) GetItemBySKU(ctx context.Context, sku uint64) (*domain.Item, error) {
+func (p *DataManager) GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemToSend, error) {
 	query := `
 		SELECT sku, name, price, quantity
 		FROM items
@@ -127,17 +147,17 @@ func (p *DataManager) GetItemBySKU(ctx context.Context, sku uint64) (*domain.Ite
 	skuStr := strconv.FormatUint(sku, 10)
 
 	var (
-		dbSKU    string
-		name     string
-		dbPrice  string
-		quantity int
+		dbSKU      string
+		dbName     string
+		dbPrice    string
+		dbQuantity int
 	)
 	row := p.pool.QueryRow(ctx, query, skuStr)
 	err := row.Scan(
 		&dbSKU,
-		&name,
+		&dbName,
 		&dbPrice,
-		&quantity)
+		&dbQuantity)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -161,11 +181,21 @@ func (p *DataManager) GetItemBySKU(ctx context.Context, sku uint64) (*domain.Ite
 		return nil, fmt.Errorf("new money amount: %w", err)
 	}
 
-	return &domain.Item{
-		SKU:      parsedSKU,
-		Name:     name,
-		Price:    amount,
-		Quantity: quantity,
+	whole, fracture, ok := amount.Int64(4)
+	if !ok {
+		return nil, fmt.Errorf("parse price as MoneySplitted: %w", err)
+	}
+	currency := amount.Curr()
+
+	return &domain.ItemToSend{
+		SKU:  parsedSKU,
+		Name: dbName,
+		Price: domain.MoneySplitted{
+			Whole:    whole,
+			Fracture: fracture,
+			Currency: currency,
+		},
+		Quantity: dbQuantity,
 	}, nil
 }
 
@@ -187,7 +217,7 @@ func (p *DataManager) DeleteItem(ctx context.Context, sku uint64) error {
 	return nil
 }
 
-func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]domain.Item, error) {
+func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]domain.ItemToSend, error) {
 	query := `
 		SELECT sku, name, price, quantity
 		FROM items
@@ -201,17 +231,17 @@ func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]domai
 	}
 	defer rows.Close()
 
-	var items []domain.Item
+	var items []domain.ItemToSend
 
 	for rows.Next() {
 		var (
-			dbSKU    string
-			name     string
-			dbPrice  string
-			quantity int
+			dbSKU      string
+			dbName     string
+			dbPrice    string
+			dbQuantity int
 		)
 
-		if err := rows.Scan(&dbSKU, &name, &dbPrice, &quantity); err != nil {
+		if err := rows.Scan(&dbSKU, &dbName, &dbPrice, &dbQuantity); err != nil {
 			return nil, fmt.Errorf("scan item: %w", err)
 		}
 
@@ -224,16 +254,27 @@ func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]domai
 		if err != nil {
 			return nil, fmt.Errorf("parse price as decimal: %w", err)
 		}
+
 		amount, err := money.NewAmountFromDecimal(money.RUB, dec)
 		if err != nil {
 			return nil, fmt.Errorf("new money amount: %w", err)
 		}
 
-		items = append(items, domain.Item{
-			SKU:      parsedSKU,
-			Name:     name,
-			Price:    amount,
-			Quantity: quantity,
+		whole, fracture, ok := amount.Int64(4)
+		if !ok {
+			return nil, fmt.Errorf("parse price as MoneySplitted: %w", err)
+		}
+		currency := amount.Curr()
+
+		items = append(items, domain.ItemToSend{
+			SKU:  parsedSKU,
+			Name: dbName,
+			Price: domain.MoneySplitted{
+				Whole:    whole,
+				Fracture: fracture,
+				Currency: currency,
+			},
+			Quantity: dbQuantity,
 		})
 	}
 

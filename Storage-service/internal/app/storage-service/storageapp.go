@@ -29,15 +29,15 @@ type GetSystemer interface {
 }
 
 type Repository interface {
-	CreateItem(ctx context.Context, item *domain.Item) (domain.Item, error)
-	UpdateProduct(ctx context.Context, item *domain.Item) (domain.Item, error)
-	GetItemBySKU(ctx context.Context, sku uint64) (*domain.Item, error)
+	CreateItem(ctx context.Context, item *domain.Item) (domain.ItemToSend, error)
+	UpdateProduct(ctx context.Context, item *domain.Item) (domain.ItemToSend, error)
+	GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemToSend, error)
 	DeleteItem(ctx context.Context, sku uint64) error
-	ListItems(ctx context.Context, limit, offset int) ([]domain.Item, error)
+	ListItems(ctx context.Context, limit, offset int) ([]domain.ItemToSend, error)
 }
 
-// для десериализации
-type ItemParse struct {
+// Объект item для десериализации из запроса
+type itemParse struct {
 	SKU      uint64 `json:"sku"`
 	Name     string `json:"name"`
 	Price    string `json:"price"`
@@ -50,6 +50,7 @@ func NewApp(h GetSystemer, r Repository) *App {
 		"GET /help":             Command{"Список команд.", s.Help},
 		"GET /health":           Command{"Вернуть состояние сервиса и данные о системе сервера.", s.Health},
 		"GET /v1/item/{sku}":    Command{"Получить предмет по SKU", s.GetItem},
+		"PUT /v1/item/{sku}":    Command{"Обновить товар по SKU", s.UpdateItem},
 		"DELETE /v1/item/{sku}": Command{"Удалить предмет по SKU", s.DeleteItem},
 		"GET /v1/items":         Command{"Получить список всех товаров (параметры для пагинации: limit, offset)", s.GetItems},
 		"POST /v1/item":         Command{"Создать новый товар", s.CreateItem},
@@ -117,9 +118,11 @@ func (a *App) GetItem(w http.ResponseWriter, r *http.Request) {
 		}*/
 		return
 	}
+
 	data, err := json.Marshal(item)
+
 	if err != nil {
-		http.Error(w, `{"error":"internal server error"}`, 404)
+		http.Error(w, `{"error":"internal server error"}`, 500)
 		/*err = fmt.Errorf("internal server error: %w", err)
 		w.WriteHeader(500)
 		_, w_err := w.Write([]byte(err.Error()))
@@ -170,7 +173,7 @@ func (a *App) DeleteItem(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var item ItemParse
+	var item itemParse
 	err := json.NewDecoder(r.Body).Decode(&item)
 	if err != nil {
 		err = fmt.Errorf("internal server error: %w", err)
@@ -286,7 +289,7 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var itemToUpdate ItemParse
+	var itemToUpdate itemParse
 	err = json.NewDecoder(r.Body).Decode(&itemToUpdate)
 	if err != nil {
 		http.Error(w, `{"error":"invalid json"}`, 400)
