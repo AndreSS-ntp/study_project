@@ -19,22 +19,14 @@ func main() {
 	logger := alogger.NewLogger()
 	baseCtx := alogger.WithLogger(context.Background(), logger)
 	logger.Info(baseCtx, "Storage-service is running...")
-	ctx, cancel := context.WithCancel(baseCtx)
-	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	ctx := withGracefulShutdown(baseCtx)
 
 	dbpool, err := pgxpool.New(ctx, config.DB_URL)
 	if err != nil {
 		logger.Error(ctx, "Unable to create connection pool: "+err.Error())
-		cancel()
+		return
 	}
 	defer dbpool.Close()
-
-	go func() {
-		<-exit
-		logger.Warn(ctx, "Shutting down service...")
-		cancel()
-	}()
 
 	serv := system.Service{}
 	repo := repository.NewDataManager(dbpool)
@@ -57,7 +49,7 @@ func main() {
 		err_las := server.ListenAndServe()
 		if err_las != nil {
 			logger.Error(ctx, "HTTP server error: "+err_las.Error())
-			cancel()
+			return
 		}
 	}()
 
@@ -69,4 +61,18 @@ func main() {
 	}
 
 	logger.Info(ctx, "Storage-service stopped.")
+}
+
+func withGracefulShutdown(baseCtx context.Context) context.Context {
+	ctx, cancel := context.WithCancel(baseCtx)
+	defer cancel()
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		<-exit
+		alogger.FromContext(ctx).Warn(ctx, "Shutting down service...")
+		cancel()
+	}()
+	return ctx
 }
