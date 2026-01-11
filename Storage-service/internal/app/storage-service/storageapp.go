@@ -48,16 +48,6 @@ type ErrorResponse struct {
 	ErrMsg string `json:"error"`
 }
 
-func sendError(ctx context.Context, w http.ResponseWriter, msg string, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	w_err := json.NewEncoder(w).Encode(ErrorResponse{msg})
-	if w_err != nil {
-		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-	}
-}
-
 func NewApp(h GetSystemer, r Repository) *App {
 	s := App{}
 	var commands = map[string]Command{
@@ -80,19 +70,10 @@ func (a *App) Health(w http.ResponseWriter, r *http.Request) {
 	system := a.Service.GetSystem(ctx)
 	data, err := json.Marshal(system)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, w_err := w.Write([]byte(err.Error()))
-		if w_err != nil {
-			alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-		}
+		sendError(ctx, w, err.Error(), 500)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	_, w_err := w.Write(data)
-	if w_err != nil {
-		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-	}
+	sendOk(ctx, w, data, 200)
 }
 
 func (a *App) Help(w http.ResponseWriter, r *http.Request) {
@@ -101,11 +82,7 @@ func (a *App) Help(w http.ResponseWriter, r *http.Request) {
 	for pattern, command := range a.Commands {
 		message += pattern + " - " + command.Description + "\n"
 	}
-	w.WriteHeader(http.StatusOK)
-	_, w_err := w.Write([]byte(message))
-	if w_err != nil {
-		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-	}
+	sendOk(ctx, w, []byte(message), 200)
 }
 
 func (a *App) GetItem(w http.ResponseWriter, r *http.Request) {
@@ -127,12 +104,7 @@ func (a *App) GetItem(w http.ResponseWriter, r *http.Request) {
 		sendError(ctx, w, "internal server error", 500)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, w_err := w.Write(data)
-	if w_err != nil {
-		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-	}
+	sendOk(ctx, w, data, 200)
 }
 
 func (a *App) DeleteItem(w http.ResponseWriter, r *http.Request) {
@@ -194,12 +166,7 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-	_, w_err := w.Write(data)
-	if w_err != nil {
-		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-	}
+	sendOk(ctx, w, data, 201)
 }
 
 func (a *App) GetItems(w http.ResponseWriter, r *http.Request) {
@@ -226,12 +193,7 @@ func (a *App) GetItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, w_err := w.Write(data)
-	if w_err != nil {
-		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
-	}
+	sendOk(ctx, w, data, 200)
 }
 
 func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
@@ -278,8 +240,22 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendOk(ctx, w, data, 200)
+}
+
+func sendError(ctx context.Context, w http.ResponseWriter, msg string, status int) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(status)
+
+	w_err := json.NewEncoder(w).Encode(ErrorResponse{msg})
+	if w_err != nil {
+		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
+	}
+}
+
+func sendOk(ctx context.Context, w http.ResponseWriter, data []byte, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	_, w_err := w.Write(data)
 	if w_err != nil {
 		alogger.FromContext(ctx).Error(ctx, "cant write a response: "+w_err.Error())
