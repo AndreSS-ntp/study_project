@@ -19,7 +19,8 @@ func main() {
 	logger := alogger.NewLogger()
 	baseCtx := alogger.WithLogger(context.Background(), logger)
 	logger.Info(baseCtx, "Storage-service is running...")
-	ctx := withGracefulShutdown(baseCtx)
+	ctx, cancel := withGracefulShutdown(baseCtx)
+	defer cancel()
 
 	dbpool, err := pgxpool.New(ctx, config.DB_URL)
 	if err != nil {
@@ -63,9 +64,8 @@ func main() {
 	logger.Info(ctx, "Storage-service stopped.")
 }
 
-func withGracefulShutdown(baseCtx context.Context) context.Context {
+func withGracefulShutdown(baseCtx context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(baseCtx)
-	defer cancel()
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
@@ -74,5 +74,5 @@ func withGracefulShutdown(baseCtx context.Context) context.Context {
 		alogger.FromContext(ctx).Warn(ctx, "Shutting down service...")
 		cancel()
 	}()
-	return ctx
+	return ctx, cancel
 }
