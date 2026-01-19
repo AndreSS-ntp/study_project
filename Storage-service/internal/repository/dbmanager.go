@@ -24,6 +24,7 @@ func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (*domai
 	query := `
 		INSERT INTO items (sku, name, price, quantity)
 		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (sku) DO NOTHING
 		RETURNING sku, name, price, quantity
 	`
 
@@ -45,6 +46,9 @@ func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (*domai
 
 	err := row.Scan(&dbSKU, &dbName, &dbPrice, &dbQuantity)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrAlreadyExists
+		}
 		return nil, fmt.Errorf("scan created item: %w", err)
 	}
 

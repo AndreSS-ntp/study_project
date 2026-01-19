@@ -7,7 +7,6 @@ import (
 	"fmt"
 	alogger "github.com/AndreSS-ntp/logger"
 	"github.com/govalues/money"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/unwisecode/over-the-horison-andress/Storage-service/internal/domain"
 	"net/http"
 	"strconv"
@@ -151,9 +150,8 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 
 	createdItem, err := a.Repository.CreateItem(ctx, &newItem)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			sendError(ctx, w, "sku already exists", 409)
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			sendError(ctx, w, domain.ErrAlreadyExists.Error(), 409)
 			return
 		}
 		sendError(ctx, w, "internal server error", 500)
