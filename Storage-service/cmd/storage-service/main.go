@@ -29,9 +29,9 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	serv := system.Service{}
 	repo := repository.NewDataManager(dbpool)
-	storageApp := storage_service.NewApp(&serv, repo)
+	serv := system.NewService(repo)
+	storageApp := storage_service.NewApp(serv)
 	mux := http.NewServeMux()
 
 	for pattern, command := range storageApp.Commands {

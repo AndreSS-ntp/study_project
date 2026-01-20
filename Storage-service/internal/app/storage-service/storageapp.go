@@ -18,16 +18,12 @@ type Command struct {
 }
 
 type App struct {
-	Commands   map[string]Command
-	Service    GetSystemer
-	Repository Repository
+	Commands map[string]Command
+	Service  Service
 }
 
-type GetSystemer interface {
+type Service interface {
 	GetSystem(ctx context.Context) *domain.System
-}
-
-type Repository interface {
 	CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemToSend, error)
 	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemToSend, error)
 	GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemToSend, error)
@@ -47,21 +43,20 @@ type ErrorResponse struct {
 	ErrMsg string `json:"error"`
 }
 
-func NewApp(h GetSystemer, r Repository) *App {
-	s := App{}
+func NewApp(s Service) *App {
+	a := App{}
 	var commands = map[string]Command{
-		"GET /help":             Command{"Список команд.", s.Help},
-		"GET /health":           Command{"Вернуть состояние сервиса и данные о системе сервера.", s.Health},
-		"GET /v1/item/{sku}":    Command{"Получить предмет по SKU", s.GetItem},
-		"PUT /v1/item/{sku}":    Command{"Обновить товар по SKU", s.UpdateItem},
-		"DELETE /v1/item/{sku}": Command{"Удалить предмет по SKU", s.DeleteItem},
-		"GET /v1/items":         Command{"Получить список всех товаров (параметры для пагинации: limit, offset)", s.GetItems},
-		"POST /v1/item":         Command{"Создать новый товар", s.CreateItem},
+		"GET /help":             Command{"Список команд.", a.Help},
+		"GET /health":           Command{"Вернуть состояние сервиса и данные о системе сервера.", a.Health},
+		"GET /v1/item/{sku}":    Command{"Получить предмет по SKU", a.GetItem},
+		"PUT /v1/item/{sku}":    Command{"Обновить товар по SKU", a.UpdateItem},
+		"DELETE /v1/item/{sku}": Command{"Удалить предмет по SKU", a.DeleteItem},
+		"GET /v1/items":         Command{"Получить список всех товаров (параметры для пагинации: limit, offset)", a.GetItems},
+		"POST /v1/item":         Command{"Создать новый товар", a.CreateItem},
 	}
-	s.Commands = commands
-	s.Service = h
-	s.Repository = r
-	return &s
+	a.Commands = commands
+	a.Service = s
+	return &a
 }
 
 func (a *App) Health(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +86,7 @@ func (a *App) GetItem(w http.ResponseWriter, r *http.Request) {
 		sendError(ctx, w, "invalid sku", 400)
 		return
 	}
-	item, err := a.Repository.GetItemBySKU(ctx, sku)
+	item, err := a.Service.GetItemBySKU(ctx, sku)
 	if err != nil {
 		sendError(ctx, w, "item not found", 404)
 		return
@@ -114,7 +109,7 @@ func (a *App) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = a.Repository.DeleteItem(ctx, sku)
+	err = a.Service.DeleteItem(ctx, sku)
 	if err != nil {
 		if errors.Is(err, fmt.Errorf("item not found")) {
 			sendError(ctx, w, "item not found", 404)
@@ -148,7 +143,7 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 		Quantity: item.Quantity,
 	}
 
-	createdItem, err := a.Repository.CreateItem(ctx, &newItem)
+	createdItem, err := a.Service.CreateItem(ctx, &newItem)
 	if err != nil {
 		if errors.Is(err, domain.ErrAlreadyExists) {
 			sendError(ctx, w, domain.ErrAlreadyExists.Error(), 409)
@@ -179,7 +174,7 @@ func (a *App) GetItems(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	items, err := a.Repository.ListItems(ctx, limit, offset)
+	items, err := a.Service.ListItems(ctx, limit, offset)
 	if err != nil {
 		sendError(ctx, w, "internal server error", 500)
 		return
@@ -222,7 +217,7 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		Quantity: itemToUpdate.Quantity,
 	}
 
-	updated, err := a.Repository.UpdateProduct(ctx, &updatedItem)
+	updated, err := a.Service.UpdateProduct(ctx, &updatedItem)
 	if err != nil {
 		if errors.Is(err, fmt.Errorf("item not found")) {
 			sendError(ctx, w, "item not found", 404)
