@@ -24,11 +24,11 @@ type App struct {
 
 type Service interface {
 	GetSystem(ctx context.Context) *domain.System
-	CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemToSend, error)
-	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemToSend, error)
-	GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemToSend, error)
+	CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error)
+	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error)
+	GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemDTO, error)
 	DeleteItem(ctx context.Context, sku uint64) error
-	ListItems(ctx context.Context, limit, offset int) ([]*domain.ItemToSend, error)
+	ListItems(ctx context.Context, limit, offset int) ([]*domain.ItemDTO, error)
 }
 
 // Объект item для десериализации из запроса
@@ -36,6 +36,7 @@ type itemParse struct {
 	SKU      uint64 `json:"sku"`
 	Name     string `json:"name"`
 	Price    string `json:"price"`
+	Currency string `json:"currency"`
 	Quantity int    `json:"quantity"`
 }
 
@@ -130,7 +131,7 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	amount, err := money.ParseAmount("RUB", item.Price)
+	amount, err := money.ParseAmount(item.Currency, item.Price)
 	if err != nil {
 		sendError(ctx, w, "internal price format", 400)
 		return
@@ -140,6 +141,7 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 		SKU:      item.SKU,
 		Name:     item.Name,
 		Price:    amount,
+		Currency: amount.Curr(),
 		Quantity: item.Quantity,
 	}
 
@@ -204,7 +206,7 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	amount, err := money.ParseAmount("RUB", itemToUpdate.Price)
+	amount, err := money.ParseAmount(itemToUpdate.Currency, itemToUpdate.Price)
 	if err != nil {
 		sendError(ctx, w, "invalid price format", 400)
 		return
@@ -214,6 +216,7 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		SKU:      sku,
 		Name:     itemToUpdate.Name,
 		Price:    amount,
+		Currency: amount.Curr(),
 		Quantity: itemToUpdate.Quantity,
 	}
 

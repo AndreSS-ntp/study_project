@@ -1,6 +1,8 @@
 package domain
 
-import "github.com/govalues/money"
+import (
+	"github.com/govalues/money"
+)
 
 type System struct {
 	Num_CPU    int                `json:"num_cpu"`
@@ -14,23 +16,24 @@ type System struct {
 
 // Стандартный объект товара
 type Item struct {
-	SKU      uint64       `json:"sku"`
-	Name     string       `json:"name"`
-	Price    money.Amount `json:"price"`
-	Quantity int          `json:"quantity"`
+	SKU      uint64         `json:"sku"`
+	Name     string         `json:"name"`
+	Price    money.Amount   `json:"price"`
+	Currency money.Currency `json:"currency"`
+	Quantity int            `json:"quantity"`
 }
 
 // Объект товара для возврата ручек
-type ItemToSend struct {
+type ItemDTO struct {
 	SKU      uint64        `json:"sku"`
 	Name     string        `json:"name"`
 	Price    MoneySplitted `json:"price"`
+	Currency string        `json:"currency"`
 	Quantity int           `json:"quantity"`
 }
 
 // Объект money для маршалинга в json
 type MoneySplitted struct {
-	Whole    int64          `json:"whole"`
-	Fracture int64          `json:"fracture"`
-	Currency money.Currency `json:"currency"`
+	Whole    int64 `json:"whole"`
+	Fracture int64 `json:"fracture"`
 }
