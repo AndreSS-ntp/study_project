@@ -19,7 +19,7 @@ func NewDataManager(db *pgxpool.Pool) *DataManager {
 	return &DataManager{db}
 }
 
-func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error) {
+func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (*domain.Item, error) {
 	query := `
 		INSERT INTO items (sku, name, price, currency, quantity)
 		VALUES ($1, $2, $3, $4, $5)
@@ -34,7 +34,7 @@ func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (*domai
 		skuStr,
 		item.Name,
 		priceStr,
-		item.Currency.String(),
+		item.Price.Curr().String(),
 		item.Quantity,
 	)
 
@@ -64,25 +64,15 @@ func (p *DataManager) CreateItem(ctx context.Context, item *domain.Item) (*domai
 		return nil, fmt.Errorf("parse price as money: %w", err)
 	}
 
-	whole, fracture, ok := amount.Int64(4)
-	if !ok {
-		return nil, fmt.Errorf("parse price as MoneySplitted")
-	}
-	currency := amount.Curr().String()
-
-	return &domain.ItemDTO{
-		SKU:  parsedSKU,
-		Name: dbName,
-		Price: domain.MoneySplitted{
-			Whole:    whole,
-			Fracture: fracture,
-		},
-		Currency: currency,
+	return &domain.Item{
+		SKU:      parsedSKU,
+		Name:     dbName,
+		Price:    amount,
 		Quantity: dbQuantity,
 	}, nil
 }
 
-func (p *DataManager) UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error) {
+func (p *DataManager) UpdateProduct(ctx context.Context, item *domain.Item) (*domain.Item, error) {
 	query := `
 		UPDATE items
 		SET name = $1, price = $2, currency = $3, quantity = $4
@@ -126,25 +116,15 @@ func (p *DataManager) UpdateProduct(ctx context.Context, item *domain.Item) (*do
 		return nil, fmt.Errorf("parse price as money: %w", err)
 	}
 
-	whole, fracture, ok := amount.Int64(4)
-	if !ok {
-		return nil, fmt.Errorf("parse price as MoneySplitted")
-	}
-	currency := amount.Curr().String()
-
-	return &domain.ItemDTO{
-		SKU:  parsedSKU,
-		Name: dbName,
-		Price: domain.MoneySplitted{
-			Whole:    whole,
-			Fracture: fracture,
-		},
-		Currency: currency,
+	return &domain.Item{
+		SKU:      parsedSKU,
+		Name:     dbName,
+		Price:    amount,
 		Quantity: dbQuantity,
 	}, nil
 }
 
-func (p *DataManager) GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemDTO, error) {
+func (p *DataManager) GetItemBySKU(ctx context.Context, sku uint64) (*domain.Item, error) {
 	query := `
 		SELECT sku, name, price, currency, quantity
 		FROM items
@@ -185,20 +165,10 @@ func (p *DataManager) GetItemBySKU(ctx context.Context, sku uint64) (*domain.Ite
 		return nil, fmt.Errorf("parse price as money: %w", err)
 	}
 
-	whole, fracture, ok := amount.Int64(4)
-	if !ok {
-		return nil, fmt.Errorf("parse price as MoneySplitted")
-	}
-	currency := amount.Curr().String()
-
-	return &domain.ItemDTO{
-		SKU:  parsedSKU,
-		Name: dbName,
-		Price: domain.MoneySplitted{
-			Whole:    whole,
-			Fracture: fracture,
-		},
-		Currency: currency,
+	return &domain.Item{
+		SKU:      parsedSKU,
+		Name:     dbName,
+		Price:    amount,
 		Quantity: dbQuantity,
 	}, nil
 }
@@ -221,7 +191,7 @@ func (p *DataManager) DeleteItem(ctx context.Context, sku uint64) error {
 	return nil
 }
 
-func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]*domain.ItemDTO, error) {
+func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]*domain.Item, error) {
 	query := `
 		SELECT sku, name, price, currency, quantity
 		FROM items
@@ -235,7 +205,7 @@ func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]*doma
 	}
 	defer rows.Close()
 
-	var items []*domain.ItemDTO
+	var items []*domain.Item
 
 	for rows.Next() {
 		var (
@@ -260,20 +230,10 @@ func (p *DataManager) ListItems(ctx context.Context, limit, offset int) ([]*doma
 			return nil, fmt.Errorf("parse price as money: %w", err)
 		}
 
-		whole, fracture, ok := amount.Int64(4)
-		if !ok {
-			return nil, fmt.Errorf("parse price as MoneySplitted")
-		}
-		currency := amount.Curr().String()
-
-		items = append(items, &domain.ItemDTO{
-			SKU:  parsedSKU,
-			Name: dbName,
-			Price: domain.MoneySplitted{
-				Whole:    whole,
-				Fracture: fracture,
-			},
-			Currency: currency,
+		items = append(items, &domain.Item{
+			SKU:      parsedSKU,
+			Name:     dbName,
+			Price:    amount,
 			Quantity: dbQuantity,
 		})
 	}

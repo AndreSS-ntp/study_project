@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	alogger "github.com/AndreSS-ntp/logger"
-	"github.com/govalues/money"
 	"github.com/unwisecode/over-the-horison-andress/Storage-service/internal/domain"
 	"net/http"
 	"strconv"
@@ -24,20 +23,11 @@ type App struct {
 
 type Service interface {
 	GetSystem(ctx context.Context) *domain.System
-	CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error)
-	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error)
-	GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemDTO, error)
+	CreateItem(ctx context.Context, item *domain.Item) (*domain.Item, error)
+	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.Item, error)
+	GetItemBySKU(ctx context.Context, sku uint64) (*domain.Item, error)
 	DeleteItem(ctx context.Context, sku uint64) error
-	ListItems(ctx context.Context, limit, offset int) ([]*domain.ItemDTO, error)
-}
-
-// Объект item для десериализации из запроса
-type itemParse struct {
-	SKU      uint64 `json:"sku"`
-	Name     string `json:"name"`
-	Price    string `json:"price"`
-	Currency string `json:"currency"`
-	Quantity int    `json:"quantity"`
+	ListItems(ctx context.Context, limit, offset int) ([]*domain.Item, error)
 }
 
 type ErrorResponse struct {
@@ -124,28 +114,20 @@ func (a *App) DeleteItem(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var item itemParse
-	err := json.NewDecoder(r.Body).Decode(&item)
+	var itemDTO *domain.ItemDTO
+	err := json.NewDecoder(r.Body).Decode(&itemDTO)
 	if err != nil {
 		sendError(ctx, w, "invalid json", 400)
 		return
 	}
 
-	amount, err := money.ParseAmount(item.Currency, item.Price)
+	item, err := domain.ToItem(itemDTO)
 	if err != nil {
-		sendError(ctx, w, "internal price format", 400)
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
 
-	newItem := domain.Item{
-		SKU:      item.SKU,
-		Name:     item.Name,
-		Price:    amount,
-		Currency: amount.Curr(),
-		Quantity: item.Quantity,
-	}
-
-	createdItem, err := a.Service.CreateItem(ctx, &newItem)
+	createdItem, err := a.Service.CreateItem(ctx, item)
 	if err != nil {
 		if errors.Is(err, domain.ErrAlreadyExists) {
 			sendError(ctx, w, domain.ErrAlreadyExists.Error(), 409)
@@ -155,7 +137,7 @@ func (a *App) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(createdItem)
+	data, err := json.Marshal(domain.ToItemDTO(createdItem))
 	if err != nil {
 		sendError(ctx, w, "internal server error", 500)
 		return
@@ -199,28 +181,21 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var itemToUpdate itemParse
-	err = json.NewDecoder(r.Body).Decode(&itemToUpdate)
+	var itemDTO *domain.ItemDTO
+	err = json.NewDecoder(r.Body).Decode(itemDTO)
 	if err != nil {
 		sendError(ctx, w, "invalid json", 400)
 		return
 	}
 
-	amount, err := money.ParseAmount(itemToUpdate.Currency, itemToUpdate.Price)
+	item, err := domain.ToItem(itemDTO)
 	if err != nil {
-		sendError(ctx, w, "invalid price format", 400)
+		sendError(ctx, w, "internal server error", 500)
 		return
 	}
+	item.SKU = sku
 
-	updatedItem := domain.Item{
-		SKU:      sku,
-		Name:     itemToUpdate.Name,
-		Price:    amount,
-		Currency: amount.Curr(),
-		Quantity: itemToUpdate.Quantity,
-	}
-
-	updated, err := a.Service.UpdateProduct(ctx, &updatedItem)
+	updatedItem, err := a.Service.UpdateProduct(ctx, item)
 	if err != nil {
 		if errors.Is(err, fmt.Errorf("item not found")) {
 			sendError(ctx, w, "item not found", 404)
@@ -230,7 +205,7 @@ func (a *App) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(updated)
+	data, err := json.Marshal(domain.ToItemDTO(updatedItem))
 	if err != nil {
 		sendError(ctx, w, "internal server error", 500)
 		return

@@ -12,26 +12,26 @@ type Service struct {
 }
 
 type Repository interface {
-	CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error)
-	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error)
-	GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemDTO, error)
+	CreateItem(ctx context.Context, item *domain.Item) (*domain.Item, error)
+	UpdateProduct(ctx context.Context, item *domain.Item) (*domain.Item, error)
+	GetItemBySKU(ctx context.Context, sku uint64) (*domain.Item, error)
 	DeleteItem(ctx context.Context, sku uint64) error
-	ListItems(ctx context.Context, limit, offset int) ([]*domain.ItemDTO, error)
+	ListItems(ctx context.Context, limit, offset int) ([]*domain.Item, error)
 }
 
 func NewService(repository Repository) *Service {
 	return &Service{repository}
 }
 
-func (s *Service) CreateItem(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error) {
+func (s *Service) CreateItem(ctx context.Context, item *domain.Item) (*domain.Item, error) {
 	return s.Repository.CreateItem(ctx, item)
 }
 
-func (s *Service) UpdateProduct(ctx context.Context, item *domain.Item) (*domain.ItemDTO, error) {
+func (s *Service) UpdateProduct(ctx context.Context, item *domain.Item) (*domain.Item, error) {
 	return s.Repository.UpdateProduct(ctx, item)
 }
 
-func (s *Service) GetItemBySKU(ctx context.Context, sku uint64) (*domain.ItemDTO, error) {
+func (s *Service) GetItemBySKU(ctx context.Context, sku uint64) (*domain.Item, error) {
 	return s.Repository.GetItemBySKU(ctx, sku)
 }
 
@@ -39,7 +39,7 @@ func (s *Service) DeleteItem(ctx context.Context, sku uint64) error {
 	return s.Repository.DeleteItem(ctx, sku)
 }
 
-func (s *Service) ListItems(ctx context.Context, limit, offset int) ([]*domain.ItemDTO, error) {
+func (s *Service) ListItems(ctx context.Context, limit, offset int) ([]*domain.Item, error) {
 	return s.Repository.ListItems(ctx, limit, offset)
 }
 
