@@ -18,10 +18,10 @@ type System struct {
 
 // Стандартный объект товара
 type Item struct {
-	SKU      uint64       `json:"sku"`
-	Name     string       `json:"name"`
-	Price    money.Amount `json:"price"`
-	Quantity int          `json:"quantity"`
+	SKU      uint64
+	Name     string
+	Price    money.Amount
+	Quantity int
 }
 
 // Паттерн DTO
