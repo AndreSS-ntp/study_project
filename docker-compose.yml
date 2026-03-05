@@ -24,6 +24,30 @@ services:
     ports:
       - 7002:7002
 
+  storage:
+    build: ./Storage-service
+    depends_on:
+      storage-migrate:
+        condition: service_completed_successfully
+      storage-db:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - 7003:7003
+
+  storage-migrate:
+    build:
+      context: ./Storage-service
+      dockerfile: Dockerfile.goose
+    env_file: .env
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: ${STORAGE_DB_URL}
+    depends_on:
+      storage-db:
+        condition: service_healthy
+    command: goose up
+
   store-migrate:
     build:
       context: ./Store-service
@@ -31,26 +55,45 @@ services:
     env_file: .env
     environment:
       GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: ${DB_URL}
+      GOOSE_DBSTRING: ${STORE_DB_URL}
     depends_on:
       store-db:
         condition: service_healthy
     command: goose up
 
-  store-db:
+  storage-db:
     image: postgres:latest
-    container_name: postgres
+    container_name: postgres_storage
     env_file: .env
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${STORAGE_DB_USER}
+      - POSTGRES_PASSWORD=${STORAGE_DB_PASSWORD}
+      - POSTGRES_DB=${STORAGE_DB_NAME}
     volumes:
-      - ./data/postgres_data:/app/data/postgres_data
+      - ./data/storage_data:/app/data/postgres_data
+    ports:
+      - "5429:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${STORAGE_DB_USER} -d ${STORAGE_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  store-db:
+    image: postgres:latest
+    container_name: postgres_store
+    env_file: .env
+    environment:
+      - POSTGRES_USER=${STORE_DB_USER}
+      - POSTGRES_PASSWORD=${STORE_DB_PASSWORD}
+      - POSTGRES_DB=${STORE_DB_NAME}
+    volumes:
+      - ./data/store_data:/app/data/postgres_data
     ports:
       - "5430:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${STORE_DB_USER} -d ${STORE_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
